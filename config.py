@@ -1,10 +1,12 @@
+DEBUG = False
+
 DIALECT = 'mysql'
 DRIVER = 'mysqldb'
-USERNAME = 'domjudge'
-PASSWORD = 'djpw'
-HOST = '127.0.0.1'
-PORT = '13306'
-DATABASE = 'domjudge'
+USERNAME = 'root'
+PASSWORD = 'a1v1Ka6mCx06y2sm9RyB'
+HOST = 'vm.rish.com.tw'
+PORT = '3306'
+DATABASE = 'Course'
 
 DB_URI = "{}+{}://{}:{}@{}:{}/{}?charset=utf8mb4".format(DIALECT, DRIVER, USERNAME, PASSWORD, HOST, PORT, DATABASE)
 SQLALCHEMY_DATABASE_URI = "{}+{}://{}:{}@{}:{}/{}?charset=utf8mb4".format(DIALECT, DRIVER, USERNAME, PASSWORD, HOST, PORT, DATABASE)
