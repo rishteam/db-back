@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-from crawler.parser import courseHTML_to_dict
+from .parser import courseHTML_to_dict
 
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'

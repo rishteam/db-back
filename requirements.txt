@@ -2,3 +2,5 @@ flask
 flask-restful
 flask_sqlalchemy
 mysqlclient
+beautifulsoup4
+requests
