@@ -9,7 +9,10 @@ headers = {
 
 def get_formDataStr(login_res):
     soup = BeautifulSoup(login_res.text, 'html.parser')
-    fds_tag = soup.select('input#DSIDFormDataStr')[0]
+    input_tag = soup.select('input#DSIDFormDataStr')
+    if input_tag == []:
+        return None
+    fds_tag = input_tag[0]
     val = fds_tag['value']
     return val
 
@@ -18,6 +21,11 @@ def continue_last_session(r, formDataStr):
     cont_data = {'btnContinue': '%E7%B9%BC%E7%BA%8C%E5%B7%A5%E4%BD%9C%E9%9A%8E%E6%AE%B5', 'FormDataStr': formDataStr}
     res = r.post(url, data=cont_data, headers=headers, allow_redirects=True)
     return res
+
+def logout(r):
+    url = 'https://stdntvpn.dev.fju.edu.tw/student/api/,DanaInfo=140.136.251.210+SSLVpnSignOut'
+    logout_res = r.get(url, allow_redirects=True)
+    return logout_res
 
 def get_current_course_list_HTML(r, user, passwd):
     # login
@@ -33,22 +41,28 @@ def get_current_course_list_HTML(r, user, passwd):
     url = 'https://stdntvpn.dev.fju.edu.tw/student/Account/,DanaInfo=140.136.251.210,SSO=U+sslvpnPost'
     home_res = r.get(url, allow_redirects=True)
     print('home = {}'.format(home_res.status_code))
-    # if it has last session
+    # Not succeeded
+    fail = False
     if home_res.status_code == 404 and login_res.status_code == 200:
+        # Judge if login failed or last session
         fds = get_formDataStr(login_res)
-        home_res = continue_last_session(r, fds)
-        print('cont = {}'.format(home_res.status_code))
+        if fds == None: # login failed
+            fail = True
+        else: # last session
+            home_res = continue_last_session(r, fds)
+            print('cont = {}'.format(home_res.status_code))
+    if fail:
+        print('')
+        return None
     # find the link to Course List
     soup = BeautifulSoup(home_res.text, 'html.parser')
     res = soup.select('a#systemID_15') # 選課清單
-
     # Get course list HTML
     url = res[0]['href']
     course_res = r.get(url, allow_redirects=True)
     print('Course list = {}'.format(course_res.status_code))
     # Logout
-    url = 'https://stdntvpn.dev.fju.edu.tw/student/api/,DanaInfo=140.136.251.210+SSLVpnSignOut'
-    logout_res = r.get(url, allow_redirects=True)
+    logout_res = logout(r)
     print('log out = {}'.format(logout_res.status_code))
 
     return course_res.text
@@ -56,4 +70,4 @@ def get_current_course_list_HTML(r, user, passwd):
 def get_currnet_course_list(user, passwd):
     r = requests.Session()
     html = get_current_course_list_HTML(r, user, passwd)
-    return courseHTML_to_dict(html)
+    return courseHTML_to_dict(html) if html != None else None
