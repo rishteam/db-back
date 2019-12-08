@@ -1,4 +1,8 @@
-DEBUG = False
+import os
+
+DEBUG = True
+
+SECRET_KEY = os.urandom(32)
 
 DIALECT = 'mysql'
 DRIVER = 'mysqldb'

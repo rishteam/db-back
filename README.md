@@ -10,5 +10,3 @@ pip install -r requirements.txt
 ```
 
 > `libmariadbclient-dev` for mariadb
-
-

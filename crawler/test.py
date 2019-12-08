@@ -13,7 +13,7 @@ CUR = 1
 if __name__ == '__main__':
     r = requests.Session()
 
-    print(get_currnet_course_list('406262515', 'aa98765432'))
+    print(get_currnet_course_list('406262515', 'aa987654321'))
 
     # li = get_currnet_course_list(*testacc[CUR])
     # json_li = json.dumps(li, sort_keys=True).encode('utf-8')

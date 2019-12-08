@@ -22,20 +22,26 @@ def continue_last_session(r, formDataStr):
     res = r.post(url, data=cont_data, headers=headers, allow_redirects=True)
     return res
 
+def login(r, user, passwd):
+    url = 'https://stdntvpn.dev.fju.edu.tw/dana-na/auth/url_A1zClhwC7pm1Qoc7/login.cgi'
+    login_data = {'tz_offset': '480',
+                  'username': user,
+                  'password': passwd,
+                  'realm': 'Std-SSO',
+                  'btnSubmit': '%E7%99%BB%E5%85%A5'}
+    login_res = r.post(url, data=login_data,
+                       headers=headers, allow_redirects=True)
+    return login_res
+
 def logout(r):
     url = 'https://stdntvpn.dev.fju.edu.tw/student/api/,DanaInfo=140.136.251.210+SSLVpnSignOut'
     logout_res = r.get(url, allow_redirects=True)
     return logout_res
 
-def get_current_course_list_HTML(r, user, passwd):
+# return if fail, home_res
+def try_to_login(r, user, passwd):
     # login
-    url = 'https://stdntvpn.dev.fju.edu.tw/dana-na/auth/url_A1zClhwC7pm1Qoc7/login.cgi'
-    login_data = {'tz_offset': '480',
-                'username': user,
-                'password': passwd,
-                'realm': 'Std-SSO',
-                'btnSubmit': '%E7%99%BB%E5%85%A5'}
-    login_res = r.post(url, data=login_data, headers=headers, allow_redirects=True)
+    login_res = login(r, user, passwd)
     print('login = {}'.format(login_res.status_code))
     # go to fju web portal
     url = 'https://stdntvpn.dev.fju.edu.tw/student/Account/,DanaInfo=140.136.251.210,SSO=U+sslvpnPost'
@@ -46,11 +52,15 @@ def get_current_course_list_HTML(r, user, passwd):
     if home_res.status_code == 404 and login_res.status_code == 200:
         # Judge if login failed or last session
         fds = get_formDataStr(login_res)
-        if fds == None: # login failed
+        if fds == None:  # login failed
             fail = True
-        else: # last session
+        else:  # last session
             home_res = continue_last_session(r, fds)
             print('cont = {}'.format(home_res.status_code))
+    return fail, home_res
+
+def get_current_course_list_HTML(r, user, passwd):
+    fail, home_res = try_to_login(r, user, passwd)
     if fail:
         print('')
         return None
@@ -67,7 +77,8 @@ def get_current_course_list_HTML(r, user, passwd):
 
     return course_res.text
 
-def get_currnet_course_list(user, passwd):
-    r = requests.Session()
+def get_currnet_course_list(user, passwd, req=None):
+    # TODO: Keep this session
+    r = req if req else requests.Session()
     html = get_current_course_list_HTML(r, user, passwd)
     return courseHTML_to_dict(html) if html != None else None
