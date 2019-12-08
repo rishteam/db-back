@@ -17,9 +17,12 @@ api = Api(app)
 
 db.init_app(app)
 
+# TODO: Figure out why didn't location='form' work
 login_parser = reqparse.RequestParser()
-login_parser.add_argument('username', type=str, help='Please provide the username or reference the API Docs', required=True)
-login_parser.add_argument('password', type=str, help='Please provide the password or reference the API Docs', required=True)
+login_parser.add_argument('username', type=str, required=True,
+                          help='Please provide the username or reference the API Docs')
+login_parser.add_argument('password', type=str, required=True,
+                          help='Please provide the password or reference the API Docs')
 
 def api_prefix(s):
   return '/db/v1' + s
@@ -207,6 +210,22 @@ class LoginRes(Resource):
     print(time.time())
     return {'token': token}, 200
 
+from utils import token_required
+class CurriculumRes(Resource):
+  @token_required
+  def get(self, stuID):
+    # TODO: impl some time based updating course list mechanics
+    res = db.session.execute(text('''
+    SELECT password FROM `Course`.`user`
+    WHERE username=:username
+    '''), {
+      'username': stuID
+    })
+    if res.returns_rows and res.rowcount == 1:
+      passwd = res.fetchone()[0]
+      clist = get_currnet_course_list(stuID, passwd) # TODO: backup this
+    return clist, 200
+
 # school
 ## list schools
 api.add_resource(School, api_prefix('/schools'))
@@ -221,6 +240,9 @@ api.add_resource(CourseDetail, api_prefix('/courses/<int:cid>'))
 
 # Login
 api.add_resource(LoginRes, api_prefix('/login'))
+
+# Curriculums
+api.add_resource(CurriculumRes, api_prefix('/users/<int:stuID>/curriculums'))
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=80)
