@@ -129,24 +129,95 @@ class Course(Resource):
     # li = 'test'
     return li, 200
 
-# TODO(roy4801): provide only filters
+
+# provide only filters
+parse_filter = reqparse.RequestParser()
+parse_filter.add_argument('cid', type=str, help='Please give me data')
+parse_filter.add_argument('year', type=str, help='Please give me data')
+parse_filter.add_argument('name', type=str, help='Please give me data')
+parse_filter.add_argument('semester', type=str, help='Please give me data')
+parse_filter.add_argument('department', type=str, help='Please give me data')
+parse_filter.add_argument('college', type=str, help='Please give me data')
+parse_filter.add_argument('grade', type=str, help='Please give me data')
+parse_filter.add_argument('school', type=str, help='Please give me data')
+
+def get_school_id(school_name):
+	res = db.session.execute(text('SELECT sid FROM school WHERE name=:school_name'),
+							{'school_name' : school_name})
+
+	if res.rowcount == 0:
+		return None
+	res	= res.fetchone()
+	return res[0]
+
 class CourseList(Resource):
-  def get(self):
-    res = db.session.execute(text("SELECT id, name, department, teacher from class"))
-    # pack into a list
-    li = []
-    if res.returns_rows and res.rowcount > 0:
-      for i, name, dep, teacher in res:
-        li.append(
-          {
-            'id' : i,
-            'name': name,
-            'department': dep,
-            'teacher': teacher
-          }
-        )
-    # print(li)
-    return {}, 200
+	def post(self):
+		args = parse_filter.parse_args()
+		paremeter = []
+		condition = []
+		idx = [
+			'cid',
+			'year',
+			'name',
+			'semester',
+			'department',
+			'college',
+			'grade',
+			'school'
+		]
+
+		for i in idx:
+			if i == 'school':
+				condition.append(get_school_id(args[i]))
+				paremeter.append('sid')
+			else:
+				condition.append(args[i])
+				paremeter.append(i)
+
+		# 將有給條件的都拿去SQL搜尋，只能一個一個用AND接起
+		flag = 0
+		search_condition = ''
+		for i in range(0, len(condition)):
+			if condition[i] != None:
+				if flag == 0:
+					search_condition += str(paremeter[i]) + '=' + '\'' + str(condition[i]) + '\''
+					flag = 1
+				else:
+					search_condition += 'AND ' + \
+                                            str(paremeter[i]) + '=' + \
+                                            '\'' + str(condition[i]) + '\''
+
+		search_condition = 'SELECT * FROM course WHERE ' + search_condition
+
+		res = db.session.execute(text(search_condition))
+		print(search_condition)
+
+		if res.rowcount == 0:
+			return {"message": "NOT FOUND"}, 400
+	
+		items = []
+		for row in res:
+			items.append({
+                            'cid': check_null(str(row['cid'])),
+                            'year': check_null(str(row['year'])),
+                            'semester': check_null(str(row['semester'])),
+                            'name': check_null(str(row['name'])),
+                            'teacher': check_null(str(row['tid'])),
+                            'school': check_null(str(row['sid'])),
+                            'college': check_null(str(row['college'])),
+                            'grade': check_null(str(row['grade'])),
+                            'department': check_null(str(row['department'])),
+                            'score': check_null(str(row['score'])),
+                            'description': check_null(str(row['description'])),
+                            'link': check_null(str(row['link'])),
+                            'system': check_null(str(row['system'])),
+                            'subject': check_null(str(row['subject'])),
+                            'required': check_null(str(row['required'])),
+                            'student': check_null(str(row['student'])),
+                            'lang': check_null(str(row['lang']))
+                        })
+		return items, 200
+
 
 class CourseDetail(Resource):
   def get(self, cid):
@@ -231,6 +302,7 @@ parser.add_argument('course_code', type=str, help='Please give me data')
 parser.add_argument('name', type=str, help='Please give me data')
 parser.add_argument('teacher', type=str, help='Please give me data')
 parser.add_argument('department', type=str, help='Please give me data')
+
 
 def check_null(data):
 	if len(data) == 0:
