@@ -227,37 +227,114 @@ class CurriculumRes(Resource):
     return clist, 200
 
 
-class FJU_course(Resource):
-    def get(self):
-        res = db.session.execute(text('SELECT * FROM fju_course limit 100'))
+parser = reqparse.RequestParser()
+parser.add_argument('course_code', type=str, help='Please give me data')
+parser.add_argument('name', type=str, help='Please give me data')
+parser.add_argument('teacher', type=str, help='Please give me data')
+parser.add_argument('department', type=str, help='Please give me data')
 
-        items = []
-        for row in res:
-            items.append({
-                         'course_code': row['course_code'],
-                         'name': row['name'],
-                         'teacher': row['teacher'],
-                         'department': row['department'],
-                         'day': row['day'],
-                         'week': row['week'],
-                         'period': row['period'],
-                         'classroom': row['classroom']
-                         })
-        return items, 200
+def check_null(data):
+	if len(data) == 0:
+		return 'None'
+	else:
+		return data
 
+
+class FJU_course_list(Resource):
+	def post(self):
+		args = parser.parse_args()
+		paremeter = []
+		condition = []
+		idx = [
+			'course_code',
+			'name',
+			'teacher',
+			'department'
+		]
+		for i in idx:
+			condition.append(args[i])
+			paremeter.append(i)
+
+		# 將有給條件的都拿去SQL搜尋，只能一個一個用AND接起
+		flag = 0
+		search_condition = ''
+		for i in range(0,len(condition)):
+			if condition[i] != None:
+				if flag == 0:
+					search_condition += paremeter[i] + '=' + '\'' + condition[i] + '\''
+					flag = 1
+				else:
+					search_condition += 'AND ' + paremeter[i] + '=' + '\'' + condition[i] + '\''
+
+		search_condition = 'SELECT * FROM fju_course WHERE ' + search_condition
+
+		
+		res = db.session.execute(text(search_condition))
+		print(search_condition)
+		items = []
+		for row in res:
+			items.append({
+					   'course_code': check_null(row['course_code']),
+                       'name': check_null(row['name']),
+                       'teacher': check_null(row['teacher']),
+                       'department': check_null(row['department']),
+                       'score': check_null(row['score']),
+                       'kind': check_null(row['kind']),
+                       'times': check_null(row['times']),
+                       'day': check_null(row['day']),
+                       'week': check_null(row['week']),
+                       'period': check_null(row['period']),
+                       'classroom': check_null(row['classroom']),
+                       'day2': check_null(row['day2']),
+                       'week2': check_null(row['week2']),
+                       'period2': check_null(row['period2']),
+                       'classroom2': check_null(row['classroom2']),
+                       'day3': check_null(row['day3']),
+                       'week3': check_null(row['week3']),
+                       'period3': check_null(row['period3']),
+                       'classroom3': check_null(row['classroom3']),
+                       'course_selection': row['course_selection']
+						})
+		return items, 200
+
+class Course_delete(Resource):
+	def post(self, uid, delete_course_code):
+
+		# 判斷是否有這堂課
+		res = db.session.execute(text('''
+		SELECT * FROM curriculum WHERE uid= :uid AND course_code= :course_code
+		'''),
+		{
+        	'uid': uid,
+			'course_code': delete_course_code
+        })
+		if res.rowcount == 0:
+			return {"result": "You don't have this course"}, 400
+
+		# 找到之後刪除
+		db.session.execute(text('''
+        DELETE FROM curriculum 
+		WHERE uid=:uid AND course_code=:course_code
+        '''),
+        {
+        	'uid': uid,
+			'course_code': delete_course_code
+        })
+		db.session.commit()
+		return {"result": "success"}, 200
 
 class Course_insert(Resource):
     def post(self, uid, add_course_code):
 
         chose = db.session.execute(text('''
-        SELECT * FROM curriculum where uid=:uid
+        SELECT * FROM curriculum WHERE uid=:uid
         '''),
-                                   {
+        {
             'uid': uid
         })
 
         uid_exist = db.session.execute(text('''
-            SELECT * FROM user where uid=:uid     
+            SELECT * FROM user WHERE uid=:uid     
         '''),
                                        {
             'uid': uid
@@ -371,10 +448,11 @@ api.add_resource(LoginRes, api_prefix('/login'))
 api.add_resource(CurriculumRes, api_prefix('/users/<int:stuID>/curriculums'))
 
 # FJU_course
-api.add_resource(FJU_course, api_prefix('/fju_course'))
+api.add_resource(FJU_course_list, api_prefix('/fju_course'))
 api.add_resource(Course_insert, api_prefix(
-    '/fju_course/<int:uid>/<string:add_course_code>'))
-
+    '/fju_course/insert/<int:uid>/<string:add_course_code>'))
+api.add_resource(Course_delete, api_prefix(
+    '/fju_course/delete/<int:uid>/<string:delete_course_code>'))
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=80)
