@@ -225,7 +225,7 @@ class CourseDetail(Resource):
     return data, 200
 
 from crawler.course import try_to_login
-import hashlib
+from utils import md5
 
 class LoginRes(Resource):
   def post(self):
@@ -239,11 +239,9 @@ class LoginRes(Resource):
 
     # Generate the token
     dic = {'username': user, 'password': passwd}
-    from config import SECRET_KEY
-    dic['secret'] = hashlib.md5(SECRET_KEY).hexdigest()
-    json_dic = json.dumps(dic, sort_keys=True)
-    token = hashlib.md5(json_dic.encode('utf-8')).hexdigest() # TODO: add salt or use passlib?
-    print(token)
+    dic['secret'] = md5(config.SECRET_KEY)
+    token = md5(dic)  # TODO: add salt or use passlib?
+    # print(token)
 
     # Check if a user is in the db
     res = db.session.execute(
