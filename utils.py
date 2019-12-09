@@ -1,3 +1,4 @@
+import re
 from functools import wraps
 from flask_restful import reqparse, abort
 from sqlalchemy import text
@@ -34,7 +35,7 @@ def token_required(func):
             abort(404, message='User not found')
 
         # TODO: user regex to santitize hash
-        if t == 'Digest' and len(h) == 32:
+        if t == 'Digest' and re.match('^ [a-f0-9]{32}$', h):
             if not check_token(stuID, h):
                 abort(400, message='Bad token')
         return func(*args, **kwargs)

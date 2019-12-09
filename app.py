@@ -212,7 +212,7 @@ class LoginRes(Resource):
 from utils import token_required
 class CurriculumRes(Resource):
   @token_required
-  def get(self, stuID):
+  def get(self, stuID, year):
     # TODO: impl some time based updating course list mechanics
     res = db.session.execute(text('''
     SELECT password FROM `Course`.`user`
@@ -222,8 +222,14 @@ class CurriculumRes(Resource):
     })
     if res.returns_rows and res.rowcount == 1:
       passwd = res.fetchone()[0]
-      clist = get_currnet_course_list(stuID, passwd) # TODO: backup this
+      year = str(year)
+      clist = get_course_list(stuID, passwd, None, [year])  # TODO: backup this
     return clist, 200
+
+class CurriculumList(Resource):
+  @token_required
+  def get(self, stuID):
+    return '', 200
 
 class FJU_course(Resource):
     def get(self):
@@ -280,13 +286,12 @@ class Course_insert(Resource):
             # 重複選課
             if row['course_code'] == add_course_code:
                 return {
-                    "message": "Course_code duplicate"
+                    "message": "course_code duplicate"
                 }, 400
             have = db.session.execute(text('''
-            SELECT * FROM fju_course where course_code=:course_code
-            '''),
-            {
-                'course_code': row['course_code']
+              SELECT * FROM fju_course where course_code=:course_code
+            '''), {
+              'course_code': row['course_code']
             })
             chose_course_code.append(row['course_code'])
             for have_course in have:
@@ -355,7 +360,7 @@ api.add_resource(School, api_prefix('/schools'))
 api.add_resource(Course, api_prefix('/schools/<int:sid>/courses'), endpoint='list_courses_of_a_school')
 
 # courses
-## breif
+## brief
 api.add_resource(CourseList, api_prefix('/courses/list'), endpoint='list_brief_courses') #TODO(roy4801): this will fucked up
 ## details of a specific course
 api.add_resource(CourseDetail, api_prefix('/courses/<int:cid>'))
@@ -364,7 +369,8 @@ api.add_resource(CourseDetail, api_prefix('/courses/<int:cid>'))
 api.add_resource(LoginRes, api_prefix('/login'))
 
 # Curriculums
-api.add_resource(CurriculumRes, api_prefix('/users/<int:stuID>/curriculums'))
+api.add_resource(CurriculumRes, api_prefix('/users/<int:stuID>/curriculums/<int:year>'))
+api.add_resource(CurriculumList, api_prefix('/users/<int:stuID>/curriculums'))
 
 # FJU_course
 api.add_resource(FJU_course, api_prefix('/fju_course'))

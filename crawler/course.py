@@ -64,7 +64,7 @@ def try_to_login(r, user, passwd):
             print('cont = {}'.format(home_res.status_code))
     return fail, home_res
 
-
+# e.g. grade_to_num('三乙') -> 3
 def grade_to_num(grade):
     # TODO: 阿延畢的勒
     if not re.match('^[一二三四]{1}[甲乙]{1}$', grade):
@@ -150,6 +150,7 @@ def get_course_list_HTML_by_year(r, year, course_res):
     return course_year_res.text
 
 # year = ['1081', '1072' ...]
+# TODO: The option ALL_YEAR should judge by the grade of a person
 def get_course_list_HTML(r, user, passwd, year=None):
     fail, home_res = try_to_login(r, user, passwd)
     if fail:
