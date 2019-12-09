@@ -2,6 +2,8 @@ import re
 from functools import wraps
 from flask_restful import reqparse, abort
 from sqlalchemy import text
+
+import hashlib
 #
 from db import db
 
@@ -28,18 +30,33 @@ def token_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         header = token_parser.parse_args()
-        t, h = header['Authorization'].split()
+        try:
+            t, h = header['Authorization'].split()
+        except ValueError as e:
+            print(e)
+            abort(404, message='Bad token')
         stuID = kwargs['stuID']
         # check user
         if not check_user_exist(stuID):
             abort(404, message='User not found')
 
         # TODO: user regex to santitize hash
-        if t == 'Digest' and re.match('^ [a-f0-9]{32}$', h):
-            if not check_token(stuID, h):
-                abort(400, message='Bad token')
+        if not re.match('^[a-f0-9]{32}$', h):
+            abort(400, message='Bad token')
+        if t != 'Digest':
+            abort(400, message='Bad token')
+        if not check_token(stuID, h):
+            abort(400, message='Bad token')
         return func(*args, **kwargs)
     return wrapper
 
 def result_msg(s):
     return {'message': s}
+
+def md5(s, salt=''):
+    if isinstance(s, str):
+        s = s.encode('utf-8')
+    elif isinstance(s, dict):
+        json_dic = json.dumps(dic, sort_keys=True)
+        return md5(json_dic)
+    return hashlib.md5(s).hexdigest()

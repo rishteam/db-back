@@ -130,7 +130,6 @@ class Course(Resource):
     # li = 'test'
     return li, 200
 
-
 # provide only filters
 parse_filter = reqparse.RequestParser()
 parse_filter.add_argument('cid', type=str, help='`Please provide `cid`')

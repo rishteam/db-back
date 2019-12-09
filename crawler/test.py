@@ -13,8 +13,6 @@ CUR = 0
 if __name__ == '__main__':
     r = requests.Session()
 
-    
-
     # cur_hash = hashlib.md5(json_li).hexdigest()
     # print(cur_hash)
 
