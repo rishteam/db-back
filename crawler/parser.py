@@ -84,3 +84,11 @@ def courseHTML_to_dict_old(html):
             c[k] = v
         rt.append(c)
     return rt
+
+# find the link to Course List
+def get_courseList_link_from_home(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    res = soup.select('a#systemID_15')  # 選課清單
+    if res == []:
+        raise RuntimeError('Cannot find any link to course list')
+    return res[0]['href']

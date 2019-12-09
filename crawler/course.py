@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
 
-from .parser import courseHTML_to_dict
+from .parser import courseHTML_to_dict, get_courseList_link_from_home
 
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
@@ -63,6 +63,54 @@ def try_to_login(r, user, passwd):
             print('cont = {}'.format(home_res.status_code))
     return fail, home_res
 
+# returns a person's identity
+# {
+#   'DNP': 'D'/'N'/'P'  # 日間 / 夜間 / 進修
+#   'grade': [一二三四]{1}[甲乙]{1}       # 年級
+#   'd_abbr': '資工'    # 系所縮寫
+#   'name': '鍾秉桓'
+# }
+def get_person_identity(r, user, passwd):
+    # login
+    fail, home_res = try_to_login(r, user, passwd)
+    if fail:
+        print('Failed to login')
+        return None
+    #
+    url = get_courseList_link_from_home(home_res.text)
+    res = r.get(url, headers=headers)
+    # parse res
+    info = {}
+    targets = ['LabDayngt1', 'LabDptno1', 'LabStucna1']
+    soup = BeautifulSoup(res.text, 'html.parser')
+    for t in targets:
+        text = soup.select('span#{}'.format(t))[0].contents[0].strip('\n \xa0')
+        #
+        if t == targets[0]:
+            text = text[:1]
+            if text == '日':
+                info['DNP'] = 'D'
+            elif text == '夜':
+                info['DNP'] = 'N'
+            elif text == '進':
+                info['DNP'] = 'P'
+        # TODO: Now only support Day. Need more info.
+        elif t == targets[1]:
+            dep = text[:2]
+            gr = text[2:]
+            info['d_abbr'] = dep
+            info['grade'] = gr
+        elif t == targets[2]:
+            info['name'] = text
+    # Logout
+    logout_res = logout(r)
+    print('log out = {}'.format(logout_res.status_code))
+
+    return info
+
+def get_total_point(r, user, passwd):
+    pass
+
 def get_course_list_HTML_by_year(r, year, course_res):
     assert year # Must Not None
     #
@@ -95,12 +143,8 @@ def get_course_list_HTML(r, user, passwd, year=None):
         print('')
         return None
 
-    # find the link to Course List
-    soup = BeautifulSoup(home_res.text, 'html.parser')
-    res = soup.select('a#systemID_15') # 選課清單
-
     # Get course list HTML
-    url = res[0]['href']
+    url = get_courseList_link_from_home(home_res.text)
     course_res = r.get(url, allow_redirects=True)
     print('Course list = {}'.format(course_res.status_code))
 
