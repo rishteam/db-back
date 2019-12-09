@@ -71,6 +71,11 @@ def get_current_course_list_HTML(r, user, passwd):
     url = res[0]['href']
     course_res = r.get(url, allow_redirects=True)
     print('Course list = {}'.format(course_res.status_code))
+
+    print(r.cookies)
+    print(course_res.history[0].cookies)
+    print(course_res.headers)
+
     # Logout
     logout_res = logout(r)
     print('log out = {}'.format(logout_res.status_code))
