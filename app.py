@@ -1,4 +1,5 @@
 
+from curriculum import CurriculumRes, CurriculumList
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
@@ -224,7 +225,7 @@ class CourseDetail(Resource):
     # print(data)
     return data, 200
 
-from crawler.course import get_currnet_course_list, try_to_login
+from crawler.course import try_to_login
 import hashlib
 
 class LoginRes(Resource):
@@ -278,28 +279,6 @@ class LoginRes(Resource):
         db.session.commit()
 
     return {'token': token}, 200
-
-from utils import token_required
-class CurriculumRes(Resource):
-  @token_required
-  def get(self, stuID, year):
-    # TODO: impl some time based updating course list mechanics
-    res = db.session.execute(text('''
-    SELECT password FROM `Course`.`user`
-    WHERE username=:username
-    '''), {
-      'username': stuID
-    })
-    if res.returns_rows and res.rowcount == 1:
-      passwd = res.fetchone()[0]
-      year = str(year)
-      clist = get_course_list(stuID, passwd, None, [year])  # TODO: backup this
-    return clist, 200
-
-class CurriculumList(Resource):
-  @token_required
-  def get(self, stuID):
-    return '', 200
 
 parser = reqparse.RequestParser()
 parser.add_argument('course_code', type=str, help='Please give me data')
