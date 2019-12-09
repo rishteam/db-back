@@ -13,14 +13,12 @@ CUR = 0
 if __name__ == '__main__':
     r = requests.Session()
 
+    print(course.grade_to_num('1三乙'))
+
+    # for i in range(len(testacc)):
+    #     print(course.get_person_identity(r, *testacc[i]))
 
     # print(get_course_list(*testacc[CUR], None, ALL_YEAR))
-    for i in range(len(testacc)):
-        print(course.get_person_identity(r, *testacc[i]))
-
-    # with open('/home/roy4801/Desktop/proj/database/login/1081_1.html', 'r') as f:
-    #     html = f.read()
-
     # print(courseHTML_to_dict(html))
 
     # cur_hash = hashlib.md5(json_li).hexdigest()

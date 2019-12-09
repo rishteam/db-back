@@ -1,3 +1,4 @@
+import re
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
@@ -62,6 +63,18 @@ def try_to_login(r, user, passwd):
             home_res = continue_last_session(r, fds)
             print('cont = {}'.format(home_res.status_code))
     return fail, home_res
+
+
+def grade_to_num(grade):
+    # TODO: 阿延畢的勒
+    if not re.match('^[一二三四]{1}[甲乙]{1}$', grade):
+        raise ValueError('`grade` should match /^[一二三四]{1}[甲乙]{1}$/')
+    return {
+        '一': 1,
+        '二': 2,
+        '三': 3,
+        '四': 4
+    }[grade[0]]
 
 # returns a person's identity
 # {
