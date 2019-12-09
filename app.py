@@ -225,7 +225,6 @@ class CurriculumRes(Resource):
       clist = get_currnet_course_list(stuID, passwd) # TODO: backup this
     return clist, 200
 
-
 class FJU_course(Resource):
     def get(self):
         res = db.session.execute(text('SELECT * FROM fju_course limit 100'))
@@ -233,34 +232,32 @@ class FJU_course(Resource):
         items = []
         for row in res:
             items.append({
-                         'course_code': row['course_code'],
-                         'name': row['name'],
-                         'teacher': row['teacher'],
-                         'department': row['department'],
-                         'day': row['day'],
-                         'week': row['week'],
-                         'period': row['period'],
-                         'classroom': row['classroom']
-                         })
+              'course_code': row['course_code'],
+              'name': row['name'],
+              'teacher': row['teacher'],
+              'department': row['department'],
+              'day': row['day'],
+              'week': row['week'],
+              'period': row['period'],
+              'classroom': row['classroom']
+            })
         return items, 200
-
 
 class Course_insert(Resource):
     def post(self, uid, add_course_code):
-
         chose = db.session.execute(text('''
         SELECT * FROM curriculum where uid=:uid
         '''),
-                                   {
+        {
             'uid': uid
         })
 
         uid_exist = db.session.execute(text('''
-            SELECT * FROM user where uid=:uid     
-        '''),
-                                       {
-            'uid': uid
-        })
+            SELECT * FROM user where uid=:uid
+          '''),
+          {
+              'uid': uid
+          })
 
         if uid_exist.rowcount == 0:
             return {
@@ -288,7 +285,7 @@ class Course_insert(Resource):
             have = db.session.execute(text('''
             SELECT * FROM fju_course where course_code=:course_code
             '''),
-                                      {
+            {
                 'course_code': row['course_code']
             })
             chose_course_code.append(row['course_code'])
@@ -373,7 +370,6 @@ api.add_resource(CurriculumRes, api_prefix('/users/<int:stuID>/curriculums'))
 api.add_resource(FJU_course, api_prefix('/fju_course'))
 api.add_resource(Course_insert, api_prefix(
     '/fju_course/<int:uid>/<string:add_course_code>'))
-
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=80)
