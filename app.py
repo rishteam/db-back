@@ -59,7 +59,6 @@ def get_course_list_by_sid(sid, condit, param):
   param.update(school=school)
 
   # Prepare the sql statement
-  nf = False
   sql = 'SELECT id, name, department, teacher from class WHERE school=:school'
   for i in condit:
     sql += ' AND'
@@ -173,7 +172,7 @@ class LoginRes(Resource):
     from config import SECRET_KEY
     dic['secret'] = hashlib.md5(SECRET_KEY).hexdigest()
     json_dic = json.dumps(dic, sort_keys=True)
-    token = hashlib.md5(json_dic.encode('utf-8')).hexdigest()
+    token = hashlib.md5(json_dic.encode('utf-8')).hexdigest() # TODO: add salt or use passlib?
     print(token)
 
     # Check if a user is in the db
@@ -198,16 +197,16 @@ class LoginRes(Resource):
       elif res.rowcount == 1:
         sql = text('''
         UPDATE `Course`.`user`
-        SET `token`=:token
+        SET `token`=:token, `lastlogin`=:time
         WHERE username=:username
         ''')
         db.session.execute(sql, {
           'token': token,
-          'username': user
+          'username': user,
+          'time': time.time()
         })
         db.session.commit()
 
-    print(time.time())
     return {'token': token}, 200
 
 from utils import token_required
@@ -325,7 +324,6 @@ class Course_delete(Resource):
 
 class Course_insert(Resource):
     def post(self, uid, add_course_code):
-
         chose = db.session.execute(text('''
         SELECT * FROM curriculum WHERE uid=:uid
         '''),
@@ -366,7 +364,7 @@ class Course_insert(Resource):
             have = db.session.execute(text('''
             SELECT * FROM fju_course where course_code=:course_code
             '''),
-                                      {
+            {
                 'course_code': row['course_code']
             })
             chose_course_code.append(row['course_code'])

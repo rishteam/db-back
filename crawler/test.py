@@ -8,12 +8,13 @@ import json
 testacc = [('406262515', 'aa987654321')
         , ('406262319', 'aa987654321')
         , ('406262084', 'aa987654321')]
-CUR = 1
+CUR = 0
 
 if __name__ == '__main__':
     r = requests.Session()
 
-    print(get_currnet_course_list('406262515', 'aa987654321'))
+    # print(get_currnet_course_list('406262515', 'aa987654321'))
+    get_current_course_list_HTML(r, *testacc[CUR])
 
     # li = get_currnet_course_list(*testacc[CUR])
     # json_li = json.dumps(li, sort_keys=True).encode('utf-8')
