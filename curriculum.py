@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from db import db
 from utils import token_required
-from crawler.course import get_course_list
+from crawler import course
 
 class CurriculumRes(Resource):
   @token_required
@@ -19,10 +19,11 @@ class CurriculumRes(Resource):
     if res.returns_rows and res.rowcount == 1:
       passwd = res.fetchone()[0]
       year = str(year)
-      clist = get_course_list(stuID, passwd, None, [year])  # TODO: backup this
+      clist = course.get_course_list(stuID, passwd, None, [year])  # TODO: backup this
     return clist, 200
 
 class CurriculumList(Resource):
   @token_required
   def get(self, stuID):
+    
     return '', 200
