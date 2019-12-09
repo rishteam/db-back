@@ -1,11 +1,15 @@
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import quote_plus
 
 from .parser import courseHTML_to_dict
 
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
 }
+
+# TODO(roy4801): Grab years depends on one's year
+ALL_YEAR = ['1081', '1072', '1071', '1062', '1061']
 
 def get_formDataStr(login_res):
     soup = BeautifulSoup(login_res.text, 'html.parser')
@@ -59,19 +63,9 @@ def try_to_login(r, user, passwd):
             print('cont = {}'.format(home_res.status_code))
     return fail, home_res
 
-def get_current_course_list_HTML(r, user, passwd):
-    fail, home_res = try_to_login(r, user, passwd)
-    if fail:
-        print('')
-        return None
-    # find the link to Course List
-    soup = BeautifulSoup(home_res.text, 'html.parser')
-    res = soup.select('a#systemID_15') # 選課清單
-    # Get course list HTML
-    url = res[0]['href']
-    course_res = r.get(url, allow_redirects=True)
-    print('Course list = {}'.format(course_res.status_code))
-
+def get_course_list_HTML_by_year(r, year, course_res):
+    assert year # Must Not None
+    #
     post_url = 'https://stdntvpn.dev.fju.edu.tw/CheckSelList/,DanaInfo=estu.fju.edu.tw+HisListNew.aspx'
     soup = BeautifulSoup(course_res.text, 'html.parser')
     li_input = soup.find_all('input')
@@ -83,33 +77,67 @@ def get_current_course_list_HTML(r, user, passwd):
     post_data['__EVENTTARGET'] = 'DDL_YM'
     post_data['__EVENTARGUMENT'] = ''
     post_data['__LASTFOCUS'] = ''
-    post_data['DDL_YM'] = '1071'
-
-    print(post_data)
+    post_data['DDL_YM'] = year
 
     tmp = {
         'Referer': 'https://stdntvpn.dev.fju.edu.tw/CheckSelList/,DanaInfo=estu.fju.edu.tw+HisListNew.aspx',
         'Content-Type': 'application/x-www-form-urlencoded'
-        # 'Content-Type': 'application/form-data'
     }
     post_headers = {**headers, **tmp}
-    res = r.post(url, data=post_url, headers=post_headers,
-                 allow_redirects=True)
+    course_year_res = r.post(post_url, data=post_data, headers=post_headers,
+                             allow_redirects=True)
+    return course_year_res.text
 
-    print(res.history[0].url)
-    print(res.url)
+# year = ['1081', '1072' ...]
+def get_course_list_HTML(r, user, passwd, year=None):
+    fail, home_res = try_to_login(r, user, passwd)
+    if fail:
+        print('')
+        return None
 
-    with open('/home/roy4801/Desktop/proj/database/login/1072_res_1.html', 'w') as f:
-        f.write(BeautifulSoup(res.text, 'html.parser').prettify())
+    # find the link to Course List
+    soup = BeautifulSoup(home_res.text, 'html.parser')
+    res = soup.select('a#systemID_15') # 選課清單
+
+    # Get course list HTML
+    url = res[0]['href']
+    course_res = r.get(url, allow_redirects=True)
+    print('Course list = {}'.format(course_res.status_code))
+
+    # Get course list HTML by list `year`
+    if year == None:
+        year = [ALL_YEAR[0]]
+    elif not isinstance(year, list):
+        raise ValueError('The argument `year` must be a list or None')
+    res = {}
+    for y in year:
+        res[y] = get_course_list_HTML_by_year(r, y, course_res)
 
     # Logout
     logout_res = logout(r)
     print('log out = {}'.format(logout_res.status_code))
 
-    return course_res.text
+    return res
 
-def get_currnet_course_list(user, passwd, req=None):
+# return dict which key is semester (e.g. 1081)
+# and value is the course list of that semester
+# e.g.
+#   {
+#       '1081' : [{}, ...],
+#       '1072' : [{}, ...],
+#       ...
+#   }
+def get_course_list(user, passwd, req=None, year=None):
     # TODO: Keep this session
     r = req if req else requests.Session()
-    html = get_current_course_list_HTML(r, user, passwd)
-    return courseHTML_to_dict(html) if html != None else None
+
+    if year == None:
+        year = [ALL_YEAR[0]]
+    elif not isinstance(year, list):
+        raise ValueError('The argument `year` must be a list or None')
+    # TODO: impl the parse and return them
+    html_dic = get_course_list_HTML(r, user, passwd, year)
+    for k, v in html_dic.items():
+        html_dic[k] = courseHTML_to_dict(v)
+
+    return html_dic
