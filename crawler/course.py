@@ -72,9 +72,35 @@ def get_current_course_list_HTML(r, user, passwd):
     course_res = r.get(url, allow_redirects=True)
     print('Course list = {}'.format(course_res.status_code))
 
-    print(r.cookies)
-    print(course_res.history[0].cookies)
-    print(course_res.headers)
+    post_url = 'https://stdntvpn.dev.fju.edu.tw/CheckSelList/,DanaInfo=estu.fju.edu.tw+HisListNew.aspx'
+    soup = BeautifulSoup(course_res.text, 'html.parser')
+    li_input = soup.find_all('input')
+    for _ in range(2):
+        li_input.pop()
+    post_data = {}
+    for it in li_input:
+        post_data[it['id']] = it['value']
+    post_data['__EVENTTARGET'] = 'DDL_YM'
+    post_data['__EVENTARGUMENT'] = ''
+    post_data['__LASTFOCUS'] = ''
+    post_data['DDL_YM'] = '1071'
+
+    print(post_data)
+
+    tmp = {
+        'Referer': 'https://stdntvpn.dev.fju.edu.tw/CheckSelList/,DanaInfo=estu.fju.edu.tw+HisListNew.aspx',
+        'Content-Type': 'application/x-www-form-urlencoded'
+        # 'Content-Type': 'application/form-data'
+    }
+    post_headers = {**headers, **tmp}
+    res = r.post(url, data=post_url, headers=post_headers,
+                 allow_redirects=True)
+
+    print(res.history[0].url)
+    print(res.url)
+
+    with open('/home/roy4801/Desktop/proj/database/login/1072_res_1.html', 'w') as f:
+        f.write(BeautifulSoup(res.text, 'html.parser').prettify())
 
     # Logout
     logout_res = logout(r)
