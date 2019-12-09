@@ -132,14 +132,14 @@ class Course(Resource):
 
 # provide only filters
 parse_filter = reqparse.RequestParser()
-parse_filter.add_argument('cid', type=str, help='Please give me data')
-parse_filter.add_argument('year', type=str, help='Please give me data')
-parse_filter.add_argument('name', type=str, help='Please give me data')
-parse_filter.add_argument('semester', type=str, help='Please give me data')
-parse_filter.add_argument('department', type=str, help='Please give me data')
-parse_filter.add_argument('college', type=str, help='Please give me data')
-parse_filter.add_argument('grade', type=str, help='Please give me data')
-parse_filter.add_argument('school', type=str, help='Please give me data')
+parse_filter.add_argument('cid', type=str, help='`Please provide `cid`')
+parse_filter.add_argument('year', type=str, help='Please provide `year`')
+parse_filter.add_argument('name', type=str, help='Please provide `name`')
+parse_filter.add_argument('semester', type=str, help='Please provide `semester`')
+parse_filter.add_argument('department', type=str, help='Please provide `department`')
+parse_filter.add_argument('college', type=str, help='Please provide `college`')
+parse_filter.add_argument('grade', type=str, help='Please provide `grade`')
+parse_filter.add_argument('school', type=str, help='Please provide `school`')
 
 def get_school_id(school_name):
 	res = db.session.execute(text('SELECT sid FROM school WHERE name=:school_name'),
@@ -184,38 +184,37 @@ class CourseList(Resource):
 					flag = 1
 				else:
 					search_condition += 'AND ' + \
-                                            str(paremeter[i]) + '=' + \
-                                            '\'' + str(condition[i]) + '\''
+                              str(paremeter[i]) + '=' + \
+                              '\'' + str(condition[i]) + '\''
 
 		search_condition = 'SELECT * FROM course WHERE ' + search_condition
-
 		res = db.session.execute(text(search_condition))
 		print(search_condition)
 
 		if res.rowcount == 0:
 			return {"message": "NOT FOUND"}, 400
-	
+
 		items = []
 		for row in res:
 			items.append({
-                            'cid': check_null(str(row['cid'])),
-                            'year': check_null(str(row['year'])),
-                            'semester': check_null(str(row['semester'])),
-                            'name': check_null(str(row['name'])),
-                            'teacher': check_null(str(row['tid'])),
-                            'school': check_null(str(row['sid'])),
-                            'college': check_null(str(row['college'])),
-                            'grade': check_null(str(row['grade'])),
-                            'department': check_null(str(row['department'])),
-                            'score': check_null(str(row['score'])),
-                            'description': check_null(str(row['description'])),
-                            'link': check_null(str(row['link'])),
-                            'system': check_null(str(row['system'])),
-                            'subject': check_null(str(row['subject'])),
-                            'required': check_null(str(row['required'])),
-                            'student': check_null(str(row['student'])),
-                            'lang': check_null(str(row['lang']))
-                        })
+        'cid': check_null(str(row['cid'])),
+        'year': check_null(str(row['year'])),
+        'semester': check_null(str(row['semester'])),
+        'name': check_null(str(row['name'])),
+        'teacher': check_null(str(row['tid'])),
+        'school': check_null(str(row['sid'])),
+        'college': check_null(str(row['college'])),
+        'grade': check_null(str(row['grade'])),
+        'department': check_null(str(row['department'])),
+        'score': check_null(str(row['score'])),
+        'description': check_null(str(row['description'])),
+        'link': check_null(str(row['link'])),
+        'system': check_null(str(row['system'])),
+        'subject': check_null(str(row['subject'])),
+        'required': check_null(str(row['required'])),
+        'student': check_null(str(row['student'])),
+        'lang': check_null(str(row['lang']))
+    })
 		return items, 200
 
 
@@ -387,12 +386,11 @@ class Course_delete(Resource):
 
 		# 找到之後刪除
 		db.session.execute(text('''
-        DELETE FROM curriculum
-		WHERE uid=:uid AND course_code=:course_code
-        '''),
-        {
+          DELETE FROM curriculum
+          WHERE uid=:uid AND course_code=:course_code
+        '''), {
         	'uid': uid,
-			'course_code': delete_course_code
+			    'course_code': delete_course_code
         })
 		db.session.commit()
 		return {"result": "success"}, 200
@@ -400,16 +398,14 @@ class Course_delete(Resource):
 class Course_insert(Resource):
     def post(self, uid, add_course_code):
         chose = db.session.execute(text('''
-        SELECT * FROM curriculum WHERE uid=:uid
-        '''),
-        {
-            'uid': uid
+          SELECT * FROM curriculum WHERE uid=:uid
+        '''), {
+          'uid': uid
         })
 
         uid_exist = db.session.execute(text('''
             SELECT * FROM user WHERE uid=:uid
-        '''),
-                                       {
+        '''), {
             'uid': uid
         })
 
@@ -521,6 +517,7 @@ api.add_resource(CurriculumRes, api_prefix('/users/<int:stuID>/curriculums/<int:
 api.add_resource(CurriculumList, api_prefix('/users/<int:stuID>/curriculums'))
 
 # FJU_course
+# TODO: This is not RESTful. **FIXME**
 api.add_resource(FJU_course_list, api_prefix('/fju_course'))
 api.add_resource(Course_insert, api_prefix(
     '/fju_course/insert/<int:uid>/<string:add_course_code>'))
