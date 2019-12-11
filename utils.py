@@ -16,9 +16,9 @@ def check_user_exist(stuID):
     )
     return res.returns_rows and res.rowcount >= 1
 
-def check_token(stdID, token):
+def check_token(stuID, token):
     res = db.session.execute(
-        text('SELECT token FROM `user` WHERE username=:user'), {'user': stdID}
+        text('SELECT token FROM `user` WHERE username=:user'), {'user': stuID}
     )
     if res.returns_rows and res.rowcount == 1:
         act_token = res.fetchone()[0]

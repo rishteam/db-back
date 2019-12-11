@@ -17,6 +17,7 @@ class CurriculumRes(Resource):
 
     @staticmethod
     def update_course_list_time(stuID):
+        now = time.time()
         try:
             res = db.session.execute(text('UPDATE `Course`.`user` SET course_list_time=:time WHERE username=:username'),
             {'time': time.time(), 'username': stuID})
@@ -24,14 +25,24 @@ class CurriculumRes(Resource):
         except exc.SQLAlchemyError as e:
             print(e)
             abort(500, message='Internal Server Error (Go to see the log)')
+        return now
+
+    @staticmethod
+    def get_course_list_hash(stuID):
+        res = db.session.execute(text('''
+            SELECT course_list_hash, course_list FROM `Course`.`user`
+            WHERE username=:username
+        '''), {'username': stuID})
+        res = res.fetchone()
+        return res
 
     @token_required
     def get(self, stuID, year):
         year = str(year)
         # TODO: impl some time based updating course list mechanics
         res = db.session.execute(text('''
-        SELECT password, course_list_time, course_list_hash FROM `Course`.`user`
-        WHERE username=:username
+            SELECT password, course_list_time, course_list_hash FROM `Course`.`user`
+            WHERE username=:username
         '''), {
             'username': stuID
         })
@@ -39,18 +50,22 @@ class CurriculumRes(Resource):
             passwd, cltime, old_clist_hash = res.fetchone()
             # Maintain time
             if not cltime:
-                CurriculumRes.update_course_list_time(stuID)
+                cltime = CurriculumRes.update_course_list_time(stuID)
             cltime = datetime.datetime.fromtimestamp(cltime)
             time_delta = datetime.datetime.now() - cltime
-            # print('prev = {}'.format(cltime))
-            # print('delta = {}'.format(time_delta))
+
+            old_clist_hash, clist = CurriculumRes.get_course_list_hash(stuID)
             # Whether course list expired or not
-            if time_delta >= CurriculumRes.TIME_LIMIT or CurriculumRes.DISABLE_TIME_LIMIT:
+            # or first time
+            if time_delta >= CurriculumRes.TIME_LIMIT \
+                or (clist == None and old_clist_hash == None) \
+                or CurriculumRes.DISABLE_TIME_LIMIT:
                 CurriculumRes.update_course_list_time(stuID)
                 # Update list hash if necessary
                 clist = course.get_course_list(stuID, passwd, None, course.ALL_YEAR) # FIXME: course.ALL_YEAR is not reflecting one's grade
                 clist_hash = md5(clist)
                 # Save the course list and hash if necessary
+                # TODO: refactor to func
                 if clist_hash != old_clist_hash:
                     try:
                         res = db.session.execute(text('''
@@ -66,12 +81,10 @@ class CurriculumRes(Resource):
                         print(e)
                         abort(500, message='Internal Server Error (Go to see the log)')
                     db.session.commit()
-                # print('> hash={}'.format(clist_hash))
+            # Not first time
             else:
-                res = db.session.execute(text('SELECT course_list FROM `Course`.`user` WHERE username=:username'), {'username': stuID})
-                if res.rowcount:
-                    clist_json = res.fetchone()[0]
-                    clist = json.loads(clist_json)
+                clist = json.loads(clist)
+            # Leave only `year` data
             tmp = clist[year]
             clist.clear()
             clist[year] = tmp

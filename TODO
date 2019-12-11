@@ -1,2 +1,5 @@
 SQLi possible code
 bcrypt
+logger
+
+reset token when startup
