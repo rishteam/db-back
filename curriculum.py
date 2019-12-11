@@ -36,6 +36,23 @@ class CurriculumRes(Resource):
         res = res.fetchone()
         return res
 
+    @staticmethod
+    def update_course_list_and_hash(stuID, clist, clist_hash):
+        try:
+            res = db.session.execute(text('''
+                UPDATE `Course`.`user`
+                SET course_list=:clist, course_list_hash=:clist_hash
+                WHERE username=:username
+            '''), {
+                'username': stuID,
+                'clist': json.dumps(clist),
+                'clist_hash': clist_hash
+            })
+        except exc.SQLAlchemyError as e:
+            print(e)
+            abort(500, message='Internal Server Error (Go to see the log)')
+        db.session.commit()
+
     @token_required
     def get(self, stuID, year):
         year = str(year)
@@ -65,22 +82,8 @@ class CurriculumRes(Resource):
                 clist = course.get_course_list(stuID, passwd, None, course.ALL_YEAR) # FIXME: course.ALL_YEAR is not reflecting one's grade
                 clist_hash = md5(clist)
                 # Save the course list and hash if necessary
-                # TODO: refactor to func
                 if clist_hash != old_clist_hash:
-                    try:
-                        res = db.session.execute(text('''
-                            UPDATE `Course`.`user`
-                            SET course_list=:clist, course_list_hash=:clist_hash
-                            WHERE username=:username
-                        '''), {
-                            'username': stuID,
-                            'clist': json.dumps(clist),
-                            'clist_hash': clist_hash
-                        })
-                    except exc.SQLAlchemyError as e:
-                        print(e)
-                        abort(500, message='Internal Server Error (Go to see the log)')
-                    db.session.commit()
+                    CurriculumRes.update_course_list_and_hash(stuID, clist, clist_hash)
             # Not first time
             else:
                 clist = json.loads(clist)
