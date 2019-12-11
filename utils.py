@@ -40,7 +40,6 @@ def token_required(func):
         if not check_user_exist(stuID):
             abort(404, message='User not found')
 
-        # TODO: user regex to santitize hash
         if not re.match('^[a-f0-9]{32}$', h):
             abort(400, message='Bad token')
         if t != 'Digest':
