@@ -52,6 +52,9 @@ def token_required(func):
 def result_msg(s):
     return {'message': s}
 
+def api_prefix(s):
+    return '/db/v1' + s
+
 def md5(s, salt=''):
     if isinstance(s, str):
         s = s.encode('utf-8')
