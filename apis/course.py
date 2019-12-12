@@ -3,6 +3,7 @@ from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
 #
 from db import db
+from utils import check_null
 
 def get_school_name_by_sid(sid):
     res = db.session.execute(
@@ -101,6 +102,8 @@ parse_filter.add_argument('department', type=str,
 parse_filter.add_argument('college', type=str, help='Please provide `college`')
 parse_filter.add_argument('grade', type=str, help='Please provide `grade`')
 parse_filter.add_argument('school', type=str, help='Please provide `school`')
+parse_filter.add_argument('teacher', type=str, help='Please provide `teacher`')
+
 
 def get_school_id(school_name):
     res = db.session.execute(text('SELECT sid FROM school WHERE name=:school_name'), {
@@ -110,11 +113,14 @@ def get_school_id(school_name):
     res = res.fetchone()
     return res[0]
 
-def check_null(data):
-    if len(str(data)) == 0:
-        return ''
-    else:
-        return data
+def get_teacher_id(teacher_name):
+    res = db.session.execute(text('SELECT * FROM teacher WHERE name LIKE :teacher_name'),{
+                             'teacher_name': teacher_name})
+    res_id = []
+    for row in res:
+        res_id.append(row['tid'])
+
+    return res_id
 
 
 # for Class
@@ -127,6 +133,7 @@ class CourseList(Resource):
             'cid',
             'year',
             'name',
+            'teacher',
             'semester',
             'department',
             'college',
@@ -148,17 +155,53 @@ class CourseList(Resource):
             if i == 'school':
                 condition.append(get_school_id(args[i]))
                 paremeter.append('sid')
+            elif i == 'teacher':
+                # Find the teacher id
+                res = get_teacher_id(args[i])
+                condition.append(res)
+                paremeter.append('tid')
             else:
                 condition.append(args[i])
                 paremeter.append(i)
 
         # 將有給條件的都拿去SQL搜尋，只能一個一個用AND接起
+        # 符合teacher的tid 都 return
         flag = 0
         search_condition = ''
         for i in range(0, len(condition)):
-            if condition[i] != None:
+            if paremeter[i] == 'tid':
+                if len(condition[i]) != 0:
+                    if flag == 0:
+                        search_condition += 'WHERE ('
+                        for j in range(0,len(condition[i])):
+                            if j == len(condition[i])-1:
+                                search_condition += str(paremeter[i]) + \
+                                    '=' + '\'' + str(condition[i][j]) + '\''
+                            else:
+                                search_condition += str(paremeter[i]) + \
+                                    '=' + '\'' + str(condition[i][j]) + '\'' + ' OR '
+                        search_condition += ')'
+                        flag = 1
+                    else:
+                        search_condition += 'AND'
+                        search_condition += '('
+                        for j in range(0, len(condition[i])):
+                            if j == len(condition[i])-1:
+                                search_condition += str(paremeter[i]) + \
+                                    '=' + '\'' + str(condition[i][j]) + '\''
+                            else:
+                                search_condition += str(paremeter[i]) + \
+                                    '=' + '\'' + \
+                                    str(condition[i][j]) + '\'' + ' OR '
+                        search_condition += ')'
+                else:
+                    search_condition += 'WHERE (' + 'tid' + \
+                        '=' + '\'' + '' + '\'' + ')'
+                    flag = 1
+
+            elif condition[i] != None:
                 if flag == 0:
-                    search_condition += str(paremeter[i]) + \
+                    search_condition += 'WHERE ' + str(paremeter[i]) + \
                         '=' + '\'' + str(condition[i]) + '\''
                     flag = 1
                 else:
@@ -166,7 +209,8 @@ class CourseList(Resource):
                                         str(paremeter[i]) + '=' + \
                                         '\'' + str(condition[i]) + '\''
 
-        search_condition = 'SELECT * FROM course WHERE ' + search_condition
+
+        search_condition = 'SELECT * FROM course ' + search_condition
         res = db.session.execute(text(search_condition))
         print(search_condition)
 
