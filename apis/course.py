@@ -38,10 +38,10 @@ def get_course_list_by_sid(sid, condit, param):
         for i, name, dep, teacher in res:
             li.append(
                 {
-                    'id': i,
-                    'name': name,
+                    'id'        : i,
+                    'name'      : name,
                     'department': dep,
-                    'teacher': teacher
+                    'teacher'   : teacher
                 }
             )
     # print(li)
@@ -87,8 +87,15 @@ class Course(Resource):
 
         # print(condit, param)
         li = get_course_list_by_sid(sid, condit, param)
-        # li = 'test'
         return li, 200
+
+    @staticmethod
+    def get_fju_school_id():
+        res = db.session.execute(
+            text("SELECT sid FROM school WHERE `name`='輔仁大學'"))
+        if res.rowcount == 1:
+            return int(res.fetchone()[0])
+        raise RuntimeError('`res` returns more than 1 row')
 
 # provide only filters
 parse_filter = reqparse.RequestParser()
@@ -122,8 +129,7 @@ def get_teacher_id(teacher_name):
 
     return res_id
 
-
-# for Class
+# DEPRECATED: This will be removed soon
 class CourseList(Resource):
     def get(self):
         args = parse_filter.parse_args()
@@ -209,7 +215,6 @@ class CourseList(Resource):
                                         str(paremeter[i]) + '=' + \
                                         '\'' + str(condition[i]) + '\''
 
-
         search_condition = 'SELECT * FROM course ' + search_condition
         res = db.session.execute(text(search_condition))
         print(search_condition)
@@ -252,7 +257,6 @@ parser.add_argument('name', type=str, help='Please give me data')
 parser.add_argument('teacher', type=str, help='Please give me data')
 parser.add_argument('department', type=str, help='Please give me data')
 
-
 class FJU_course_list(Resource):
     def get(self):
         args = parser.parse_args()
@@ -278,7 +282,6 @@ class FJU_course_list(Resource):
         for i in idx:
             condition.append(args[i])
             paremeter.append(i)
-
 
         # 將有給條件的都拿去SQL搜尋，只能一個一個用AND接起
         flag = 0

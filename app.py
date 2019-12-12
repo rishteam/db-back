@@ -30,11 +30,12 @@ api.add_resource(course.CourseList, api_prefix('/courses/list'), endpoint='list_
 ## details of a specific course
 api.add_resource(course.CourseDetail, api_prefix('/courses/<int:cid>'))
 ## FJU course
-api.add_resource(course.FJU_course_list, api_prefix('/fju_course'))
+api.add_resource(course.FJU_course_list, api_prefix('/fju_course/list'))
 
 # Schedule for courses
 from apis import schedule
-
+# TODO: change fju_course to curriculum
+# TODO: change the API to token validation
 api.add_resource(schedule.Course_insert, api_prefix(
     '/fju_course/<int:uid>/<string:add_course_code>'))
 api.add_resource(schedule.Course_delete, api_prefix(
@@ -47,8 +48,7 @@ api.add_resource(login.LoginRes, api_prefix('/login'))
 # Curriculums
 from apis import curriculum
 api.add_resource(curriculum.CurriculumRes, api_prefix('/users/<int:stuID>/curriculums/<int:year>'))
-api.add_resource(curriculum.CurriculumList,
-                                 api_prefix('/users/<int:stuID>/curriculums'))
+api.add_resource(curriculum.CurriculumList, api_prefix('/users/<int:stuID>/curriculums'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)

@@ -6,8 +6,8 @@ from db import db
 
 def check_uid_exist(uid):
     uid_exist = db.session.execute(text('''
-            SELECT * FROM user WHERE uid=:uid
-        '''), {
+        SELECT * FROM user WHERE uid=:uid
+    '''), {
         'uid': uid
     })
 
