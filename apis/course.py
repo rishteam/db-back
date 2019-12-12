@@ -251,55 +251,48 @@ class CourseDetail(Resource):
         # print(data)
         return data, 200
 
-parser = reqparse.RequestParser()
-parser.add_argument('course_code', type=str, help='Please give me data')
-parser.add_argument('name', type=str, help='Please give me data')
-parser.add_argument('teacher', type=str, help='Please give me data')
-parser.add_argument('department', type=str, help='Please give me data')
-
 class FJU_course_list(Resource):
+    param_parser = reqparse.RequestParser()
+    param_parser.add_argument('course_code', type=str, help='Please give me data')
+    param_parser.add_argument('name', type=str, help='Please give me data')
+    param_parser.add_argument('teacher', type=str, help='Please give me data')
+    param_parser.add_argument('department', type=str, help='Please give me data')
+
     def get(self):
-        args = parser.parse_args()
-        paremeter = []
-        condition = []
-        idx = [
+        args = FJU_course_list.param_parser.parse_args()
+        params = {}
+        condit = [
             'course_code',
             'name',
             'teacher',
             'department'
         ]
+        selected_condit = []
 
        # Null parameter
-        none_data = True
-        for i in idx:
-            if args[i] != None:
-                none_data = False
+        is_none_data = True
+        for p in condit:
+            if args[p] != None:
+                is_none_data = False
                 break
-        if none_data == True:
-            return {"message": "You need to provide above one parameter"}, 400
+        if is_none_data:
+            return {"message": "You need to provide more than one parameter."}, 400
 
-
-        for i in idx:
-            condition.append(args[i])
-            paremeter.append(i)
-
-        # 將有給條件的都拿去SQL搜尋，只能一個一個用AND接起
-        flag = 0
-        search_condition = ''
-        for i in range(0, len(condition)):
-            if condition[i] != None:
-                if flag == 0:
-                    search_condition += paremeter[i] + \
-                        '=' + '\'' + condition[i] + '\''
-                    flag = 1
-                else:
-                    search_condition += 'AND ' + \
-                        paremeter[i] + '=' + '\'' + condition[i] + '\''
-
-        search_condition = 'SELECT * FROM fju_course WHERE ' + search_condition
-
-        res = db.session.execute(text(search_condition))
-        # print(search_condition)
+        for p in condit:
+            if p in args and args[p] != None:
+                selected_condit.append(p)
+                params[p] = args[p] + '%'
+        # Make SQL by the given condition
+        sql_where = ''
+        for idx, c in enumerate(selected_condit):
+            if idx == 0:
+                sql_where += '{0} LIKE :{0}'.format(c)
+            else:
+                sql_where += ' AND {0} LIKE :{0}'.format(c)
+        #
+        sql = 'SELECT * FROM fju_course WHERE {}'.format(sql_where)
+        res = db.session.execute(text(sql), params)
+        # Pack the results
         items = []
         for row in res:
             items.append({
@@ -325,3 +318,7 @@ class FJU_course_list(Resource):
                 'course_selection': row['course_selection']
             })
         return items, 200
+
+class FJU_CourseDetail(Resource):
+    def get(self, cid):
+        return {'message': 'Not Implemented'}, 500

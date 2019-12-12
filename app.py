@@ -30,7 +30,8 @@ api.add_resource(course.CourseList, api_prefix('/courses/list'), endpoint='list_
 ## details of a specific course
 api.add_resource(course.CourseDetail, api_prefix('/courses/<int:cid>'))
 ## FJU course
-api.add_resource(course.FJU_course_list, api_prefix('/fju_course/list'))
+api.add_resource(course.FJU_course_list, api_prefix('/fju_course/courses'))
+api.add_resource(course.FJU_CourseDetail, api_prefix('/fju_course/courses/<string:cid>'))
 
 # Schedule for courses
 from apis import schedule
