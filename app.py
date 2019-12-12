@@ -34,11 +34,11 @@ api.add_resource(course.FJU_course_list, api_prefix('/fju_course'))
 
 # Schedule for courses
 from apis import schedule
-# TODO: This is not RESTful. **FIXME**
+
 api.add_resource(schedule.Course_insert, api_prefix(
-    '/fju_course/insert/<int:uid>/<string:add_course_code>'))
+    '/fju_course/<int:uid>/<string:add_course_code>'))
 api.add_resource(schedule.Course_delete, api_prefix(
-    '/fju_course/delete/<int:uid>/<string:delete_course_code>'))
+    '/fju_course/<int:uid>/<string:delete_course_code>'))
 
 # Login
 from apis import login

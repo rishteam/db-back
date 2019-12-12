@@ -1,4 +1,3 @@
-
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
@@ -53,17 +52,17 @@ def get_detail_of_course(cid):
         "SELECT year, semester, name, department, teacher, grade, score, student, subject, system, lang, description from class WHERE id=:cid"), {'cid': cid})
     res = res.fetchone()
     dic = {
-        "year": res[0],
-        "semester": res[1],
-        "name": res[2],
-        "department": res[3],
-        "teacher": res[4],
-        "grade": res[5],
-        "score": res[6],
-        "student": res[7],
-        "subject": res[8],
-        "system": res[9],
-        "lang": res[10],
+        "year"       : res[0],
+        "semester"   : res[1],
+        "name"       : res[2],
+        "department" : res[3],
+        "teacher"    : res[4],
+        "grade"      : res[5],
+        "score"      : res[6],
+        "student"    : res[7],
+        "subject"    : res[8],
+        "system"     : res[9],
+        "lang"       : res[10],
         "description": res[11]
     }
     return dic
@@ -92,7 +91,7 @@ class Course(Resource):
 
 # provide only filters
 parse_filter = reqparse.RequestParser()
-parse_filter.add_argument('cid', type=str, help='`Please provide `cid`')
+parse_filter.add_argument('cid', type=str, help='Please provide `cid`')
 parse_filter.add_argument('year', type=str, help='Please provide `year`')
 parse_filter.add_argument('name', type=str, help='Please provide `name`')
 parse_filter.add_argument('semester', type=str,
@@ -106,14 +105,21 @@ parse_filter.add_argument('school', type=str, help='Please provide `school`')
 def get_school_id(school_name):
     res = db.session.execute(text('SELECT sid FROM school WHERE name=:school_name'), {
                              'school_name': school_name})
-
     if res.rowcount == 0:
         return None
     res = res.fetchone()
     return res[0]
 
+def check_null(data):
+    if len(str(data)) == 0:
+        return ''
+    else:
+        return data
+
+
+# for Class
 class CourseList(Resource):
-    def post(self):
+    def get(self):
         args = parse_filter.parse_args()
         paremeter = []
         condition = []
@@ -128,6 +134,16 @@ class CourseList(Resource):
             'school'
         ]
 
+        # Null parameter
+        none_data = True
+        for i in idx:
+            if args[i] != None:
+                none_data = False
+                break
+        if none_data == True:
+            return {"message": "You need to provide above one parameter"}, 400
+
+        # ready for search
         for i in idx:
             if i == 'school':
                 condition.append(get_school_id(args[i]))
@@ -160,23 +176,23 @@ class CourseList(Resource):
         items = []
         for row in res:
             items.append({
-                'cid': check_null(str(row['cid'])),
-                'year': check_null(str(row['year'])),
-                'semester': check_null(str(row['semester'])),
-                'name': check_null(str(row['name'])),
-                'teacher': check_null(str(row['tid'])),
-                'school': check_null(str(row['sid'])),
-                'college': check_null(str(row['college'])),
-                'grade': check_null(str(row['grade'])),
-                'department': check_null(str(row['department'])),
-                'score': check_null(str(row['score'])),
+                'cid'        : check_null(str(row['cid'])),
+                'year'       : check_null(str(row['year'])),
+                'semester'   : check_null(str(row['semester'])),
+                'name'       : check_null(str(row['name'])),
+                'teacher'    : check_null(str(row['tid'])),
+                'school'     : check_null(str(row['sid'])),
+                'college'    : check_null(str(row['college'])),
+                'grade'      : check_null(str(row['grade'])),
+                'department' : check_null(str(row['department'])),
+                'score'      : check_null(str(row['score'])),
                 'description': check_null(str(row['description'])),
-                'link': check_null(str(row['link'])),
-                'system': check_null(str(row['system'])),
-                'subject': check_null(str(row['subject'])),
-                'required': check_null(str(row['required'])),
-                'student': check_null(str(row['student'])),
-                'lang': check_null(str(row['lang']))
+                'link'       : check_null(str(row['link'])),
+                'system'     : check_null(str(row['system'])),
+                'subject'    : check_null(str(row['subject'])),
+                'required'   : check_null(str(row['required'])),
+                'student'    : check_null(str(row['student'])),
+                'lang'       : check_null(str(row['lang']))
             })
         return items, 200
 
@@ -192,15 +208,9 @@ parser.add_argument('name', type=str, help='Please give me data')
 parser.add_argument('teacher', type=str, help='Please give me data')
 parser.add_argument('department', type=str, help='Please give me data')
 
-# FIXME: WTF is 'None'
-def check_null(data):
-    if len(data) == 0:
-        return 'None'
-    else:
-        return data
 
 class FJU_course_list(Resource):
-    def post(self):
+    def get(self):
         args = parser.parse_args()
         paremeter = []
         condition = []
@@ -210,9 +220,21 @@ class FJU_course_list(Resource):
             'teacher',
             'department'
         ]
+
+       # Null parameter
+        none_data = True
+        for i in idx:
+            if args[i] != None:
+                none_data = False
+                break
+        if none_data == True:
+            return {"message": "You need to provide above one parameter"}, 400
+
+
         for i in idx:
             condition.append(args[i])
             paremeter.append(i)
+
 
         # 將有給條件的都拿去SQL搜尋，只能一個一個用AND接起
         flag = 0
@@ -230,29 +252,29 @@ class FJU_course_list(Resource):
         search_condition = 'SELECT * FROM fju_course WHERE ' + search_condition
 
         res = db.session.execute(text(search_condition))
-        print(search_condition)
+        # print(search_condition)
         items = []
         for row in res:
             items.append({
-                'course_code': check_null(row['course_code']),
-                'name': check_null(row['name']),
-                'teacher': check_null(row['teacher']),
-                'department': check_null(row['department']),
-                'score': check_null(row['score']),
-                'kind': check_null(row['kind']),
-                'times': check_null(row['times']),
-                'day': check_null(row['day']),
-                'week': check_null(row['week']),
-                'period': check_null(row['period']),
-                'classroom': check_null(row['classroom']),
-                'day2': check_null(row['day2']),
-                'week2': check_null(row['week2']),
-                'period2': check_null(row['period2']),
-                'classroom2': check_null(row['classroom2']),
-                'day3': check_null(row['day3']),
-                'week3': check_null(row['week3']),
-                'period3': check_null(row['period3']),
-                'classroom3': check_null(row['classroom3']),
+                'course_code'     : check_null(row['course_code']),
+                'name'            : check_null(row['name']),
+                'teacher'         : check_null(row['teacher']),
+                'department'      : check_null(row['department']),
+                'score'           : check_null(row['score']),
+                'kind'            : check_null(row['kind']),
+                'times'           : check_null(row['times']),
+                'day'             : check_null(row['day']),
+                'week'            : check_null(row['week']),
+                'period'          : check_null(row['period']),
+                'classroom'       : check_null(row['classroom']),
+                'day2'            : check_null(row['day2']),
+                'week2'           : check_null(row['week2']),
+                'period2'         : check_null(row['period2']),
+                'classroom2'      : check_null(row['classroom2']),
+                'day3'            : check_null(row['day3']),
+                'week3'           : check_null(row['week3']),
+                'period3'         : check_null(row['period3']),
+                'classroom3'      : check_null(row['classroom3']),
                 'course_selection': row['course_selection']
             })
         return items, 200

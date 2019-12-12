@@ -1,12 +1,36 @@
-
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
 
 from db import db
 
+def check_uid_exist(uid):
+    uid_exist = db.session.execute(text('''
+            SELECT * FROM user WHERE uid=:uid
+        '''), {
+        'uid': uid
+    })
+
+    if uid_exist.rowcount == 0:
+        return False
+
+def debug(period, timelist):
+    for j in range(0, 15):
+        print(period[j], end=' ')
+        print()
+        for i in range(0, 7):
+            for j in range(0, 15):
+                print(timelist[i][j], end=' ')
+            print()
+
 class Course_delete(Resource):
-    def post(self, uid, delete_course_code):
+    def delete(self, uid, delete_course_code):
+        # 確認uid是否存在
+        if check_uid_exist(uid) == False:
+            return {
+                "message": "uid error"
+            }, 400
+
         # 判斷是否有這堂課
         res = db.session.execute(text('''
             SELECT * FROM curriculum WHERE uid= :uid AND course_code= :course_code
@@ -31,22 +55,19 @@ class Course_delete(Resource):
 
 class Course_insert(Resource):
     def post(self, uid, add_course_code):
+        # 已選到的課
         chose = db.session.execute(text('''
             SELECT * FROM curriculum WHERE uid=:uid
         '''), {
             'uid': uid
         })
 
-        uid_exist = db.session.execute(text('''
-            SELECT * FROM user WHERE uid=:uid
-        '''), {
-            'uid': uid
-        })
-
-        if uid_exist.rowcount == 0:
+        # 使用者查詢
+        if check_uid_exist(uid) == False:
             return {
                 "message": "uid error"
             }, 400
+
 
         # 0-index
         timelist = [[0]*15 for i in range(7)]
@@ -85,15 +106,9 @@ class Course_insert(Resource):
                                 timelist[i][s+k] = cnt
                 cnt += 1
         # DEBUG
-        for j in range(0, 15):
-            print(period[j], end=' ')
-        print()
-        for i in range(0, 7):
-            for j in range(0, 15):
-                print(timelist[i][j], end=' ')
-            print()
+        # debug(period, timelist)
 
-        # 現在加上要選之課程
+        # 加上要選之課程
         want_add = db.session.execute(text('''
         SELECT * FROM fju_course WHERE course_code=:course_code
         '''), {
@@ -124,5 +139,6 @@ class Course_insert(Resource):
         db.session.execute('Insert into curriculum(uid, sid, course_code) values (:uid, 68, :coursecode)', {
             'coursecode': add_course_code, 'uid': uid})
         db.session.commit()
+
         return {'result': 'Success',
                 'course_code': add_course_code}, 200
