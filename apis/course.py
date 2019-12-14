@@ -1,7 +1,7 @@
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
-#
+
 from db import db
 from utils import check_null
 
@@ -251,6 +251,7 @@ class CourseDetail(Resource):
         # print(data)
         return data, 200
 
+import base64
 class FJU_course_list(Resource):
     param_parser = reqparse.RequestParser()
     param_parser.add_argument('course_code', type=str, help='Please give me data')
@@ -319,6 +320,57 @@ class FJU_course_list(Resource):
             })
         return items, 200
 
+
+
+
+def get_fju_teacher_id(teacher_name, department):
+    res = db.session.execute(text('SELECT tid FROM teacher WHERE name LIKE :teacher_name AND sid=\'68\' AND department LIKE :department'), {
+                             'teacher_name': teacher_name,
+                             'department': department
+                             })
+    row = res.fetchone()
+
+    return row[0]
+
+import json
+import urllib.parse
 class FJU_CourseDetail(Resource):
-    def get(self, cid):
-        return {'message': 'Not Implemented'}, 500
+    def get(self):
+        param_parser = reqparse.RequestParser()
+        param_parser.add_argument('cid', type=str, help='Please give me data')
+        cid_parem = param_parser.parse_args()['cid']
+        json_str = base64.b64decode(urllib.parse.unquote(cid_parem)).decode('utf-8', errors='ignore')
+        json_load = json.loads(json_str)
+
+
+        items = []
+
+        for row in json_load:
+            sql_where = ''
+            sql_where += 'name = \'{0}\''.format(row['name'])
+            sql_where += ' AND year = \'108\''
+            sql_where += ' AND sid = \'68\''
+            sql_where += ' AND tid = \'{0}\''.format(get_fju_teacher_id(row['teacher'], row['department']))
+
+            sql = 'SELECT * FROM course WHERE {}'.format(sql_where)
+            res = db.session.execute(text(sql))
+
+            if res.rowcount == 0:
+                items.append({
+                    'cid'        : '',
+                    'description': '',
+                    'link'       : '',
+                    'student'    : '',
+                    'lang'       : '',
+                })
+
+            for row in res:
+                items.append({
+                    'cid'        : check_null(row['cid']),
+                    'description': check_null(row['description']),
+                    'link'       : check_null(row['link']),
+                    'student'    : check_null(row['student']),
+                    'lang'       : check_null(row['lang']),
+                })
+
+        return items, 200
