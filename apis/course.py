@@ -329,8 +329,10 @@ def get_fju_teacher_id(teacher_name, department):
                              'department': department
                              })
     row = res.fetchone()
-
-    return row[0]
+    if res.rowcount == 0:
+        return ''
+    else:
+        return row[0]
 
 import json
 import urllib.parse
@@ -340,13 +342,11 @@ class FJU_CourseDetail(Resource):
         param_parser.add_argument('cid', type=str, help='Please give me data')
         cid_parem = param_parser.parse_args()['cid']
 
-        json_str = base64.b64decode(urllib.parse.unquote(cid_parem)).decode('utf-8', errors='ignore')
-        json_load = json.loads(json_str)
-
-
+        res = db.session.execute(text('SELECT * FROM fju_course WHERE course_code= :cid'), {
+                                    'cid': cid_parem,
+                                })
         items = []
-
-        for row in json_load:
+        for row in res:
             sql_where = ''
             sql_where += 'name = \'{0}\''.format(row['name'])
             sql_where += ' AND year = \'108\''
