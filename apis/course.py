@@ -339,6 +339,7 @@ class FJU_CourseDetail(Resource):
         param_parser = reqparse.RequestParser()
         param_parser.add_argument('cid', type=str, help='Please give me data')
         cid_parem = param_parser.parse_args()['cid']
+
         json_str = base64.b64decode(urllib.parse.unquote(cid_parem)).decode('utf-8', errors='ignore')
         json_load = json.loads(json_str)
 
