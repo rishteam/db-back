@@ -11,6 +11,8 @@ headers = {
 
 # TODO(roy4801): Grab years depends on one's year
 ALL_YEAR = ['1081', '1072', '1071', '1062', '1061']
+CUR_YEAR = 108
+CUR_SEM = 1
 
 def get_formDataStr(login_res):
     soup = BeautifulSoup(login_res.text, 'html.parser')
