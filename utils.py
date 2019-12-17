@@ -69,3 +69,6 @@ def md5(s, salt=''):
         json_dic = json.dumps(s, sort_keys=True)
         return md5(json_dic)
     return hashlib.md5(s).hexdigest()
+
+# https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
+B64_REGEX = re.compile('^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$')

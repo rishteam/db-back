@@ -94,6 +94,25 @@ class CurriculumRes(Resource):
         return clist, 200
 
 class CurriculumList(Resource):
+    @staticmethod
+    def get_db_grade(stuID):
+        res = db.session.execute(text('''
+            SELECT grade FROM `Course`.`user` WHERE username=:user
+        '''), {'user': stuID})
+        if res.rowcount == 1:
+            res = res.fetchone()[0]
+        return int(res)
+    @staticmethod
+    def set_db_grade(stuID, grade):
+        try:
+            res = db.session.execute(text('''
+                UPDATE `Course`.`user` SET grade=:grade WHERE username=:user
+            '''), {'grade': grade, 'user': stuID})
+        except exc.SQLAlchemyError as e:
+            print(e)
+            abort(500, message='Internal Server Error (Go to see the log)')
+        db.session.commit()
+
     @token_required
     def get(self, stuID):
         r = requests.Session()
@@ -102,13 +121,23 @@ class CurriculumList(Resource):
             SELECT password FROM `Course`.`user`
             WHERE username=:username
         '''), {'username': stuID})
+        # TODO: deprecate this check in the future
         if res.returns_rows and res.rowcount == 1:
             passwd = res.fetchone()[0]
         else:
             abort(404, message='User {} not found'.format(stuID))
         # Get grade of a user and return years
-        grade = course.grade_to_num(course.get_person_identity(r, stuID, passwd)['grade'])
+        db_grade = CurriculumList.get_db_grade(stuID)
+        if db_grade == 0:
+            grade = course.grade_to_num(course.get_person_identity(r, stuID, passwd)['grade'])
+            CurriculumList.set_db_grade(stuID, grade)
+        else:
+            grade = db_grade
         rt = {'year': []}
-        for i, j in zip(course.ALL_YEAR, range(grade)):
-            rt['year'].append(i)
+        for year in range(course.CUR_YEAR, course.CUR_YEAR-grade, -1):
+            for sem in range(2, 0, -1):
+                # Not showing the future year
+                if year == course.CUR_YEAR and sem > course.CUR_SEM:
+                    continue
+                rt['year'].append('{}{}'.format(year, sem))
         return rt, 200

@@ -1,9 +1,13 @@
+import base64
+import re
+import json
+import urllib.parse
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
 
 from db import db
-from utils import check_null
+from utils import check_null, B64_REGEX
 
 def get_school_name_by_sid(sid):
     res = db.session.execute(
@@ -251,7 +255,6 @@ class CourseDetail(Resource):
         # print(data)
         return data, 200
 
-import base64
 class FJU_course_list(Resource):
     param_parser = reqparse.RequestParser()
     param_parser.add_argument('course_code', type=str, help='Please give me data')
@@ -316,62 +319,86 @@ class FJU_course_list(Resource):
                 'week3'           : check_null(row['week3']),
                 'period3'         : check_null(row['period3']),
                 'classroom3'      : check_null(row['classroom3']),
-                'course_selection': row['course_selection']
+                'course_selection': row['course_selection'] # WTF is this?
             })
         return items, 200
 
-
-
-
-def get_fju_teacher_id(teacher_name, department):
-    res = db.session.execute(text('SELECT tid FROM teacher WHERE name LIKE :teacher_name AND sid=\'68\' AND department LIKE :department'), {
-                             'teacher_name': teacher_name,
-                             'department': department
-                             })
-    row = res.fetchone()
-    if res.rowcount == 0:
-        return ''
-    else:
-        return row[0]
-
-import json
-import urllib.parse
 class FJU_CourseDetail(Resource):
+    @staticmethod
+    def get_fju_teacher_id(teacher_name, department):
+        '''Get teacher id by his/her name and department'''
+        res = db.session.execute(text('''
+            SELECT tid FROM teacher
+            WHERE name LIKE :teacher_name
+                AND sid=68
+                AND department LIKE :department
+        '''), {
+            'teacher_name': teacher_name+'%',
+            'department': department+'%'
+        })
+        tid = []
+        for row in res:
+            tid.append(row['tid'])
+        return tid
+
     def get(self):
         param_parser = reqparse.RequestParser()
-        param_parser.add_argument('cid', type=str, help='Please give me data')
-        cid_parem = param_parser.parse_args()['cid']
-
-        res = db.session.execute(text('SELECT * FROM fju_course WHERE course_code= :cid'), {
-                                    'cid': cid_parem,
-                                })
-        items = []
+        param_parser.add_argument('cid', type=str)
+        # Get cid
+        cid_param = param_parser.parse_args()['cid']
+        if not cid_param:
+            abort(400, message='Please provide `cid`')
+        if not B64_REGEX.match(cid_param):
+            abort(400, message='The `cid` must be a base64 encoded json array')
+        cid_list = json.loads(base64.b64decode(cid_param))
+        if not isinstance(cid_list, list):
+            abort(400, message='The `cid` must be a base64 encoded json array')
+        cid_dic = {}
+        for idx, item in enumerate(cid_list):
+            k = 'cid_{}'.format(idx)
+            cid_dic[k] = item
+        # Make sql
+        sql = '''
+            SELECT * FROM fju_course WHERE course_code=:cid_0
+        '''
+        for i in range(1, len(cid_list)):
+            sql += 'OR course_code=:cid_{}'.format(i)
+        res = db.session.execute(text(sql), cid_dic)
+        items = {}
         for row in res:
+            # Gen WHERE part of sql querying from BIG table `course`
             sql_where = ''
-            sql_where += 'name = \'{0}\''.format(row['name'])
-            sql_where += ' AND year = \'108\''
-            sql_where += ' AND sid = \'68\''
-            sql_where += ' AND tid = \'{0}\''.format(get_fju_teacher_id(row['teacher'], row['department']))
+            sql_where += "name = '{}'".format(row['name'])
+            sql_where += " AND year = '108'"
+            sql_where += " AND sid = '68'"
+            tids = FJU_CourseDetail.get_fju_teacher_id(row['teacher'], row['department'])
+            for i, tid in enumerate(tids):
+                if i:
+                    sql_where += " OR tid = '{}'".format(tid)
+                else:
+                    sql_where += " AND (tid = '{}'".format(tid)
+            sql_where += ') '
 
             sql = 'SELECT * FROM course WHERE {}'.format(sql_where)
-            res = db.session.execute(text(sql))
+            res_detail = db.session.execute(text(sql))
+            # print(sql)
 
-            if res.rowcount == 0:
-                items.append({
-                    'cid'        : '',
+            if res_detail.rowcount == 0:
+                items[row['course_code']] = {
                     'description': '',
+                    'system'     : '',
                     'link'       : '',
                     'student'    : '',
-                    'lang'       : '',
-                })
-
-            for row in res:
-                items.append({
-                    'cid'        : check_null(row['cid']),
-                    'description': check_null(row['description']),
-                    'link'       : check_null(row['link']),
-                    'student'    : check_null(row['student']),
-                    'lang'       : check_null(row['lang']),
-                })
+                    'lang'       : ''
+                }
+            else:
+                row_detail = res_detail.fetchone()
+                items[row['course_code']] = {
+                    'description': check_null(row_detail['description']),
+                    'system'     : check_null(row_detail['system']),
+                    'link'       : check_null(row_detail['link']),
+                    'student'    : check_null(row_detail['student']),
+                    'lang'       : check_null(row_detail['lang'])
+                }
 
         return items, 200

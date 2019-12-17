@@ -34,7 +34,7 @@ def courseHTML_to_dict(html):
         #
         idx = 17
         for i in range(25, 27): # [25, 26]
-            dic[th[idx-i+25]] = tds[i].contents[0].strip('\n \xa0')
+            dic[th[idx+i-25]] = tds[i].contents[0].strip('\n \xa0')
         # print(dic)
         course.append(dic)
     return course
