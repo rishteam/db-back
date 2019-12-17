@@ -26,6 +26,13 @@ def check_token(stuID, token):
     else:
         raise RuntimeError
 
+
+def check_null(data):
+    if len(str(data)) == 0:
+        return ''
+    else:
+        return data
+
 def token_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):

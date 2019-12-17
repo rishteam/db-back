@@ -30,15 +30,18 @@ api.add_resource(course.CourseList, api_prefix('/courses/list'), endpoint='list_
 ## details of a specific course
 api.add_resource(course.CourseDetail, api_prefix('/courses/<int:cid>'))
 ## FJU course
-api.add_resource(course.FJU_course_list, api_prefix('/fju_course'))
+api.add_resource(course.FJU_course_list, api_prefix('/fju_course/courses'))
+api.add_resource(course.FJU_CourseDetail, api_prefix('/fju_course/courses/details'))
+
+
 
 # Schedule for courses
 from apis import schedule
-# TODO: This is not RESTful. **FIXME**
+
 api.add_resource(schedule.Course_insert, api_prefix(
-    '/fju_course/insert/<int:uid>/<string:add_course_code>'))
+    '/fju_course/<int:stuID>/<string:add_course_code>'))
 api.add_resource(schedule.Course_delete, api_prefix(
-    '/fju_course/delete/<int:uid>/<string:delete_course_code>'))
+    '/fju_course/<int:stuID>/<string:delete_course_code>'))
 
 # Login
 from apis import login
@@ -49,6 +52,7 @@ from apis import curriculum
 api.add_resource(curriculum.CurriculumRes, api_prefix('/users/<int:stuID>/curriculums/<int:year>'))
 api.add_resource(curriculum.CurriculumList,
                                  api_prefix('/users/<int:stuID>/curriculums'))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
