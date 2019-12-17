@@ -348,23 +348,12 @@ class FJU_CourseDetail(Resource):
         cid_param = param_parser.parse_args()['cid']
         if not cid_param:
             abort(400, message='Please provide `cid`')
-        if not B64_REGEX.match(cid_param):
-            abort(400, message='The `cid` must be a base64 encoded json array')
-        cid_list = json.loads(base64.b64decode(cid_param))
-        if not isinstance(cid_list, list):
-            abort(400, message='The `cid` must be a base64 encoded json array')
-        cid_dic = {}
-        for idx, item in enumerate(cid_list):
-            k = 'cid_{}'.format(idx)
-            cid_dic[k] = item
         # Make sql
         sql = '''
-            SELECT * FROM fju_course WHERE course_code=:cid_0
+            SELECT * FROM fju_course WHERE course_code=:cid
         '''
-        for i in range(1, len(cid_list)):
-            sql += 'OR course_code=:cid_{}'.format(i)
-        res = db.session.execute(text(sql), cid_dic)
-        items = {}
+        res = db.session.execute(text(sql), {'cid': cid_param})
+        rt = None
         for row in res:
             # Gen WHERE part of sql querying from BIG table `course`
             sql_where = ''
@@ -384,7 +373,7 @@ class FJU_CourseDetail(Resource):
             # print(sql)
 
             if res_detail.rowcount == 0:
-                items[row['course_code']] = {
+                rt = {
                     'description': '',
                     'system'     : '',
                     'link'       : '',
@@ -393,7 +382,7 @@ class FJU_CourseDetail(Resource):
                 }
             else:
                 row_detail = res_detail.fetchone()
-                items[row['course_code']] = {
+                rt = {
                     'description': check_null(row_detail['description']),
                     'system'     : check_null(row_detail['system']),
                     'link'       : check_null(row_detail['link']),
@@ -401,4 +390,4 @@ class FJU_CourseDetail(Resource):
                     'lang'       : check_null(row_detail['lang'])
                 }
 
-        return items, 200
+        return rt, 200
