@@ -53,6 +53,12 @@ api.add_resource(curriculum.CurriculumRes, api_prefix('/users/<int:stuID>/curric
 api.add_resource(curriculum.CurriculumList,
                                  api_prefix('/users/<int:stuID>/curriculums'))
 
+# Comment
+from apis import comment
+api.add_resource(comment.Comment_insert, api_prefix('/comment/<int:stuID>/<string:cid>'))
+api.add_resource(comment.Comment_delete, api_prefix(
+    '/comment/<int:stuID>/<int:commentID>'))
+# api.add_resource(comment.Comment, api_prefix('/comment/<string:cid>'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
