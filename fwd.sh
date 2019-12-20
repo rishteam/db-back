@@ -1,0 +1,1 @@
+sudo socat TCP-LISTEN:80,fork,bind=127.0.0.1 TCP:192.168.1.100:80

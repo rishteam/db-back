@@ -1,41 +1,46 @@
 import urllib.parse
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
-from sqlalchemy import text
+from sqlalchemy import text, exc
 import datetime
-
 
 from db import db
 from utils import check_null, token_required
 
-
 def get_uid(stuID):
-    res = db.session.execute(text('SELECT * FROM user WHERE username=:stuID'),
-                             {'stuID': stuID})
-
+    """Get the uid by the student ID"""
+    res = db.session.execute(text('SELECT * FROM user WHERE username=:stuID'), {'stuID': stuID})
     for row in res:
         return row['uid']
 
-
 def check_cid_exists(cid):
-    res = db.session.execute(text('SELECT * FROM fju_course WHERE course_code=:cid'),
-                            {'cid' : cid })
-    if res.rowcount == 0:
-        return False
-    else:
-        return True
+    """Check whether the cid exists or not"""
+    res = db.session.execute(text('SELECT * FROM fju_course WHERE course_code=:cid'), {'cid' : cid })
+    return res.rowcount != 0
 
+def get_recent_commentID(uid, className, classOpen, teacher):
+    """Get the recent commentID by user info and class info"""
+    res = db.session.execute(text('''
+        SELECT commentID FROM comment
+        WHERE uid=:uid AND className=:className AND classOpen=:classOpen AND teacher=:teacher
+        ORDER BY commentID DESC LIMIT 1
+    '''), {
+        'uid'       : uid,
+        'className' : className,
+        'classOpen' : classOpen,
+        'teacher'   : teacher
+    })
+    if res.rowcount:
+        return res.fetchone()['commentID']
+    raise RuntimeError('The result of recent commentID is not exist')
 
 class Comment_insert(Resource):
     @token_required
     def post(self, stuID, cid):
-
         if check_cid_exists(cid) == False:
-            abort(400, 'cid is not exist')
+            abort(400, message='`cid` is not exist.')
 
         uid = get_uid(stuID)
-
-
         condit = [
             'Quiz',
             'MidExam',
@@ -55,81 +60,83 @@ class Comment_insert(Resource):
         ]
         param_parser = reqparse.RequestParser()
         for i in condit:
-            param_parser.add_argument(i, type=str, help='Please give me data', location='form')
-
+            param_parser.add_argument(i, type=str, help='Please provide `{}`'.format(i), location='form')
 
         args = param_parser.parse_args()
         # print(cid)
-        res = db.session.execute('SELECT name, teacher, department FROM fju_course WHERE course_code=:cid', {'cid': cid})
+        res = db.session.execute(text('SELECT name, teacher, department FROM fju_course WHERE course_code=:cid'), {'cid': cid})
+        data = res.fetchone()
 
-        data = []
-        for row in res:
-            data.append(row['name'])
-            data.append(row['department'])
-            data.append(row['teacher'])
-
-        db.session.execute('INSERT INTO comment(uid, className, classOpen, teacher, createDate, Quiz, MidExam, FinalExam, PersonalReport, GroupReport, OtherExam, OtherWork, lvExamAmount, lvFun, lvLearned, lvRequest, lvTeachlear, lvWork, lvRecommend, message) \
-                            values(:uid, :className, :classOpen, :teacher, :createDate, :Quiz, :MidExam, :FinalExam, :PersonalReport, :GroupReport, :OtherExam, :OtherWork, :lvExamAmount, :lvFun, :lvLearned, :lvRequest, :lvTeachlear, :lvWork, :lvRecommend, :message)',
-                            {
-                                'uid'           : uid,
-                                'className'     : data[0],
-                                'classOpen'     : data[1],
-                                'teacher'       : data[2],
-                                'createDate'    : datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                'Quiz'          : check_null(args['Quiz']),
-                                'MidExam'       : check_null(args['MidExam']),
-                                'FinalExam'     : check_null(args['FinalExam']),
-                                'PersonalReport': check_null(args['PersonalReport']),
-                                'GroupReport'   : check_null(args['GroupReport']),
-                                'OtherExam'     : check_null(args['OtherExam']),
-                                'OtherWork'     : check_null(args['OtherWork']),
-                                'lvExamAmount'  : check_null(args['lvExamAmount']),
-                                'lvFun'         : check_null(args['lvFun']),
-                                'lvLearned'     : check_null(args['lvLearned']),
-                                'lvRequest'     : check_null(args['lvRequest']),
-                                'lvTeachlear'   : check_null(args['lvTeachlear']),
-                                'lvWork'        : check_null(args['lvWork']),
-                                'lvRecommend'   : check_null(args['lvRecommend']),
-                                'message'       : check_null(args['message'])
-                            })
+        try:
+            db.session.execute(text('''
+                INSERT INTO comment(uid, className, classOpen, teacher, createDate, Quiz, MidExam, FinalExam, PersonalReport, GroupReport, OtherExam, OtherWork, lvExamAmount, lvFun, lvLearned, lvRequest, lvTeachlear, lvWork, lvRecommend, message)
+                values(:uid, :className, :classOpen, :teacher, :createDate, :Quiz, :MidExam, :FinalExam, :PersonalReport, :GroupReport, :OtherExam, :OtherWork, :lvExamAmount, :lvFun, :lvLearned, :lvRequest, :lvTeachlear, :lvWork, :lvRecommend, :message)
+            '''), {
+                'uid'           : uid,
+                'className'     : data['name'],
+                'classOpen'     : data['department'],
+                'teacher'       : data['teacher'],
+                'createDate'    : datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'Quiz'          : check_null(args['Quiz']),
+                'MidExam'       : check_null(args['MidExam']),
+                'FinalExam'     : check_null(args['FinalExam']),
+                'PersonalReport': check_null(args['PersonalReport']),
+                'GroupReport'   : check_null(args['GroupReport']),
+                'OtherExam'     : check_null(args['OtherExam']),
+                'OtherWork'     : check_null(args['OtherWork']),
+                'lvExamAmount'  : check_null(args['lvExamAmount']),
+                'lvFun'         : check_null(args['lvFun']),
+                'lvLearned'     : check_null(args['lvLearned']),
+                'lvRequest'     : check_null(args['lvRequest']),
+                'lvTeachlear'   : check_null(args['lvTeachlear']),
+                'lvWork'        : check_null(args['lvWork']),
+                'lvRecommend'   : check_null(args['lvRecommend']),
+                'message'       : check_null(args['message'])
+            })
+        except exc.SQLAlchemyError as e:
+            print(e)
+            abort(500, message='Internal Server Error (Go to see the log)')
         db.session.commit()
+        commentID = get_recent_commentID(uid, data['name'], data['department'], data['teacher'])
 
-        return {'message': 'success'}
-
-
+        return {'message': 'Success to add a comment', 'commentID': commentID}, 200
 
 class Comment_delete(Resource):
     @token_required
     def delete(self, stuID, commentID):
         uid = get_uid(stuID)
+        # Try to delete
+        try:
+            res = db.session.execute(text('''
+                DELETE FROM comment WHERE uid=:uid AND commentID=:commentID
+            '''), {
+                'uid' : uid,
+                'commentID': commentID
+            })
+        except exc.SQLAlchemyError as e:
+            print(e)
+            abort(500, message='Internal Server Error (Go to see the log)')
 
-        # get the user comment
-        res = db.session.execute(text('SELECT commentID FROM comment WHERE uid=:uid'), {'uid' : uid})
+        if res.rowcount:
+            db.session.commit()
+            return {'message' : 'Succeeded to delete comment'}, 200
+        return {'message': 'Cannot found the comment'}, 404
 
-        for row in res:
-            if row['commentID'] == commentID:
-                db.session.execute(text('DELETE FROM comment WHERE commentID=:commentID'), {'commentID' : commentID})
-                db.session.commit()
-                return {"message" : "Success delete comment"}, 200
-        return {"message": "Cannot Found the comment"}, 400
-
-
-
-# TODO comment search
+# TODO: comment search
 class Comment(Resource):
     @staticmethod
     def get_comment_data(param):
+        # Make the sql
         sql = 'SELECT * FROM comment WHERE '
-        idx = 0
-
-        for key, val in param.items():
+        for idx, key in enumerate(param.keys()):
             if idx == 0:
-                sql +=  "{} LIKE '%{}%'".format(key, val)
-                idx = 1
+                sql +=  '{0} LIKE :{0}'.format(key)
             else:
-                sql += " AND {} LIKE '%{}%'".format(key, val)
-        # print(sql)
-        res = db.session.execute(sql)
+                sql += ' AND {0} LIKE :{0}'.format(key)
+        # Set all of the values to '%...%'
+        for key, val in param.items():
+            param[key] = '%{}%'.format(val)
+        res = db.session.execute(text(sql), param)
         return res
 
     def get(self):
@@ -153,10 +160,10 @@ class Comment(Resource):
                 # if row['department']:
                 #     param.update(classOpen=row['department'])
 
-
-
         res = Comment.get_comment_data(param)
-
+        if res.rowcount == 0:
+            abort(404, message='Cannot Found the comment data.')
+        # Collect the comments
         res_list = []
         for row in res:
             dic = {
@@ -184,12 +191,4 @@ class Comment(Resource):
             }
             res_list.append(dic)
 
-
-        if res.rowcount == 0:
-            return {"message" : "Cannot Found the comment data."}
-
         return res_list, 200
-
-
-
-
