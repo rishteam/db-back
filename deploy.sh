@@ -6,7 +6,9 @@ git pull
 # merge to master
 git checkout master
 git merge dev
+git push
 # merge to deploy
 git checkout deploy
 git merge master
-git push --all
+git push
+git checkout dev
