@@ -1,1 +1,8 @@
-__all__ = ['curriculum']
+__all__ = [
+    'comment',
+    'course', 
+    'curriculum', 
+    'login', 
+    'schedule', 
+    'school'
+]
