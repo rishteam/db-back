@@ -10,8 +10,18 @@ from utils import check_null, token_required
 def get_uid(stuID):
     """Get the uid by the student ID"""
     res = db.session.execute(text('SELECT * FROM user WHERE username=:stuID'), {'stuID': stuID})
-    for row in res:
-        return row['uid']
+    if res.rowcount >= 1:
+        return res.fetchone()['uid']
+    else:
+        raise RuntimeError('No uid referenced to {} in the db.'.format(stuID))
+
+def get_stuID(uid):
+    """Get the stuID by the uid"""
+    res = db.session.execute(text('SELECT username FROM user WHERE uid=:uid'), {'uid': uid})
+    if res.rowcount >= 1:
+        return res.fetchone()['username']
+    else:
+        raise RuntimeError('No stuID(username) referenced to {} in the db.'.format(stuID))
 
 def check_cid_exists(cid):
     """Check whether the cid exists or not"""
@@ -141,8 +151,9 @@ class Comment(Resource):
 
     def get(self):
         param = {}
-        if 'uid' in request.args:
-            param.update(uid=request.args['uid'])
+        if 'stuID' in request.args:
+            stuID = request.args['stuID']
+            param.update(uid=get_uid(stuID))
         if 'teacher' in request.args:
             param.update(teacher=request.args['teacher'])
         if 'coursename' in request.args:
@@ -150,7 +161,7 @@ class Comment(Resource):
         if 'cid' in request.args:
             res = db.session.execute(text('SELECT name, teacher, department FROM fju_course WHERE course_code=:cid'), {'cid': request.args['cid']})
             if res.rowcount == 0:
-                return {"message" : "Course_code is not exist"}
+                return {'message' : 'Course_code is not exist'}, 404
             for row in res:
                 if row['name']:
                     param.update(className=row['name'])
@@ -168,7 +179,7 @@ class Comment(Resource):
         for row in res:
             dic = {
                 'commentID'     : check_null(row['commentID']),
-                'uid'           : check_null(row['uid']),
+                'stuID'         : check_null(get_stuID(row['uid'])),
                 'classOpen'     : check_null(row['classOpen']),
                 'className'     : check_null(row['className']),
                 'teacher'       : check_null(row['teacher']),
