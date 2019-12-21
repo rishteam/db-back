@@ -21,7 +21,7 @@ def get_stuID(uid):
     if res.rowcount >= 1:
         return res.fetchone()['username']
     else:
-        raise RuntimeError('No stuID(username) referenced to {} in the db.'.format(stuID))
+        raise RuntimeError('No stuID(username) referenced to {} in the db.'.format(uid))
 
 def check_cid_exists(cid):
     """Check whether the cid exists or not"""
