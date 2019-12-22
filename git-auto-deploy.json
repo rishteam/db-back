@@ -54,7 +54,7 @@
 	"branch": "deploy",
 	"remote": "origin",
 	"path": "/home/roy4801/db-back",
-	"deploy": "sudo ./up.sh"
+	"deploy": "echo Deploying"
     }
 //  ,{
 //      "url": "https://api.github.com/repos/olipo186/Git-Auto-Deploy",
