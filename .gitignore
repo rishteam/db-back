@@ -108,3 +108,4 @@ dmypy.json
 .pyre/
 
 venv/
+*.log
