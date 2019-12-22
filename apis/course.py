@@ -7,7 +7,7 @@ from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
 
 from db import db
-from utils import check_null, B64_REGEX
+from utils import check_null
 
 def get_school_name_by_sid(sid):
     res = db.session.execute(
@@ -255,12 +255,84 @@ class CourseDetail(Resource):
         # print(data)
         return data, 200
 
+def weekday_num_to_eng(weekday):
+    """Convert the weekday (number) to the English representation: e.g. 2 -> Tue
+    """
+    return {
+        1: 'Mon',
+        2: 'Tue',
+        3: 'Wed',
+        4: 'Thu',
+        5: 'Fri',
+        6: 'Sat',
+        7: 'Sun'
+    }[weekday]
+
+def weekday_eng_to_num(weekday):
+    """Convert the weekday (English) to the number representation: e.g. Tue -> 2
+    """
+    return {
+        'Mon' : 1,
+        'Tue' : 2,
+        'Wed' : 3,
+        'Thu' : 4,
+        'Fri' : 5,
+        'Sat' : 6,
+        'Sun' : 7
+    }[weekday]
+
+def convert_weekday2list(weekday):
+    """Convert the weekday to bool list"""
+    bl = [False] * 9
+    for it in weekday:
+        bl[ord(it)-ord('0')] = True
+    return bl
+
+class CoursePeriod:
+    """Struct for period of a course"""
+    ALL_PERIOD = ['D0', 'D1', 'D2', 'D3', 'D4', 'DN', 'D5', 'D6', 'D7', 'D8', 'E0', 'E1', 'E2', 'E3', 'E4']
+    PERIOD2IDX = {'D0' : 0, 'D1' : 1, 'D2' : 2, 'D3' : 3, 'D4' : 4, 'DN' : 5, 'D5' : 6, 'D6' : 7, 'D7' : 8, 'D8' : 9, 'E0' : 10, 'E1' : 11, 'E2' : 12, 'E3' : 13, 'E4' : 14}
+
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __eq__(this, other):
+        if isinstance(this, type(other)):
+            return this.start == other.start and this.end == other.end
+        return False
+    def __contains__(self, item):
+        if not isinstance(item, type(self)):
+            raise TypeError('The item should be CoursePeriod not {}'.format(type(item)))
+        p2i = CoursePeriod.PERIOD2IDX
+        overlapp = 0
+        # i= self idx
+        for i in range(p2i[self.start], p2i[self.end]+1):
+            if p2i[item.start] <= i and i <= p2i[item.end]:
+                overlapp += 1
+        return overlapp > 0
+    def __repr__(self):
+        return '<CoursePeriod start={} end={}>'.format(self.start, self.end)
+
+def make_CoursePeriod(x):
+    """Turn the str 'D?-D?' into the CoursePeriod"""
+    if re.match(r'^((?:D(?:[0-8]|N)|E[0-4])-(?:D(?:[0-8]|N)|E[0-4]))$', x):
+        p = x.split('-')
+        return CoursePeriod(*p)
+    else:
+        raise RuntimeError('Cannot make the CoursePeriod: {}'.format(x))
+
+TIME_NONE = 1
+
 class FJU_course_list(Resource):
+    """Provides APIs for listing the courses in FJU"""
     param_parser = reqparse.RequestParser()
-    param_parser.add_argument('course_code', type=str, help='Please give me data')
-    param_parser.add_argument('name', type=str, help='Please give me data')
-    param_parser.add_argument('teacher', type=str, help='Please give me data')
-    param_parser.add_argument('department', type=str, help='Please give me data')
+    param_parser.add_argument('course_code', type=str)
+    param_parser.add_argument('name', type=str)
+    param_parser.add_argument('teacher', type=str)
+    param_parser.add_argument('department', type=str)
+    param_parser.add_argument('weekday', type=str)
+    param_parser.add_argument('time', type=str)
+    param_parser.add_argument('include', type=bool)
 
     def get(self):
         args = FJU_course_list.param_parser.parse_args()
@@ -271,34 +343,91 @@ class FJU_course_list(Resource):
             'teacher',
             'department'
         ]
+        not_query = ['weekday', 'time', 'include']
+        condit += not_query # for checking
         selected_condit = []
+        sql_where = ''
 
-       # Null parameter
+       # Check if it provides more than one param
         is_none_data = True
         for p in condit:
             if args[p] != None:
                 is_none_data = False
                 break
         if is_none_data:
-            return {"message": "You need to provide more than one parameter."}, 400
+            return {'message': 'You need to provide more than one parameter.'}, 400
 
+        # Prepare the params depends on the condit
         for p in condit:
             if p in args and args[p] != None:
                 selected_condit.append(p)
-                params[p] = args[p] + '%'
+                if p not in not_query:
+                    params[p] = args[p] + '%'
+        # Prepare weekday part of SQL WHERE
+        weekday = None
+        weekday_arg = args['weekday'] if 'weekday' in selected_condit and 'weekday' in args else None
+        if weekday_arg:
+            if not re.match(r'^[1-8]{1,8}$', weekday_arg):
+                return {'message': '`weekday` must be numbers'}, 400
+            weekday = convert_weekday2list(weekday_arg)
+            first = True
+            for i in range(1, len(weekday)):
+                if weekday[i]:
+                    if not first:
+                        sql_where += ' OR '
+                    sql_where += "day='{0}' OR day2='{0}' OR day3='{0}'".format(weekday_num_to_eng(i))
+                    first = False
+            sql_where = '({})'.format(sql_where)
+        # Prepare time (D?-D?)
+        # Notice: TIME_NONE means empty time and None means it didn't pass time option in
+        if 'time' in selected_condit:
+            if args['time'] == 'None':
+                time = TIME_NONE
+                sql_where = '' # ignore the weekday
+                sql_where += "(period='' AND period2='' AND period3='')"
+            else:
+                time = args['time'].split('-')
+                time = CoursePeriod(*time)
+        else:
+            time = None
+        print('>> {}'.format(time))
+        #
+        inc_flag = args['include']
         # Make SQL by the given condition
-        sql_where = ''
+        selected_condit = [x for x in selected_condit if x not in not_query] # remove not_query from condit
         for idx, c in enumerate(selected_condit):
             if idx == 0:
+                if weekday:
+                    sql_where += ' AND '
                 sql_where += '{0} LIKE :{0}'.format(c)
             else:
                 sql_where += ' AND {0} LIKE :{0}'.format(c)
-        #
+        # if no option was chosen
+        if sql_where == '':
+            sql_where = '1'
         sql = 'SELECT * FROM fju_course WHERE {}'.format(sql_where)
+        print(sql)
         res = db.session.execute(text(sql), params)
         # Pack the results
         items = []
         for row in res:
+            # Check period of a course if necessary
+            if time and time != TIME_NONE:
+                p1 = make_CoursePeriod(row['period']) if row['period'] else None
+                p2 = make_CoursePeriod(row['period2']) if row['period2'] else None
+                p3 = make_CoursePeriod(row['period3']) if row['period3'] else None
+                plist = [p1, p2, p3]
+                succ = False
+                for p in plist:
+                    if inc_flag: # include
+                        if p and p in time:
+                            succ = True
+                    else: # not include
+                        if p and p == time:
+                            succ = True
+                if not succ:
+                    continue
+            #
             items.append({
                 'course_code'     : check_null(row['course_code']),
                 'name'            : check_null(row['name']),
