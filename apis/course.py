@@ -494,8 +494,7 @@ class FJU_CourseDetail(Resource):
                 if i:
                     sql_where += " OR tid = '{}'".format(tid)
                 else:
-                    sql_where += " AND (tid = '{}'".format(tid)
-            sql_where += ') '
+                    sql_where += " AND tid = '{}'".format(tid)
 
             sql = 'SELECT * FROM course WHERE {}'.format(sql_where)
             res_detail = db.session.execute(text(sql))
