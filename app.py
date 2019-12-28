@@ -33,8 +33,6 @@ api.add_resource(course.CourseDetail, api_prefix('/courses/<int:cid>'))
 api.add_resource(course.FJU_course_list, api_prefix('/fju_course/courses'))
 api.add_resource(course.FJU_CourseDetail, api_prefix('/fju_course/courses/details'))
 
-
-
 # Schedule for courses
 from apis import schedule
 
