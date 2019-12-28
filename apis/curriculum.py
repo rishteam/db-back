@@ -11,6 +11,69 @@ from utils import token_required, md5
 from crawler import course
 import utils
 
+CURR_UPDATE_TIME_LIMIT = datetime.timedelta(minutes=5)  # min
+DISABLE_CURR_UPDATE_TIME_LIMIT = True
+
+# Workaround: This is duplicate with get_uid inside `comment.py`
+def get_uid(stuID):
+    """Get the uid by the student ID"""
+    res = db.session.execute(text('SELECT * FROM user WHERE username=:stuID'), {'stuID': stuID})
+    if res.rowcount >= 1:
+        return res.fetchone()['uid']
+    else:
+        raise RuntimeError('No uid referenced to {} in the db.'.format(stuID))
+
+# TODO: move this to model
+def insert_curriculum(uid, course_code, year, orig, pick, sid=68):
+    """Insert a record into curriculum"""
+    res = db.session.execute(text('''
+        INSERT INTO curriculum (uid, sid, course_code, year, pick, orig) VALUES
+        (:uid, :sid, :course_code, :year, :pick, :orig)
+    '''), {
+        'uid'        : uid,
+        'sid'        : sid,
+        'course_code': course_code,
+        'year'       : year,
+        'pick'       : pick,
+        'orig'       : orig
+    })
+    # print(res.rowcount)
+    # TODO: handle exception
+
+def check_curriculum_updated(uid):
+    """Checks if the curriculum has updated `CURR_UPDATE_TIME_LIMIT` ago\n
+    Return: `bool`"""
+    res = db.session.execute(text('SELECT * FROM Course.curriculum_check WHERE uid=:uid'), {'uid': uid})
+    if res.rowcount:
+        if res.rowcount > 1:
+            raise RuntimeError('More than one uid existed in curriculum_check')
+        p = res.fetchone() # person
+        dt = utils.datetime_from_timestamp(p['time'])
+        now = utils.datetime_now()
+        return now - dt < CURR_UPDATE_TIME_LIMIT \
+            or not DISABLE_CURR_UPDATE_TIME_LIMIT
+    else:
+        return False
+
+def update_curriculum_check(uid):
+    """Update the curriculum_check record by uid\n
+    Return: `bool`"""
+    # if not exist
+    res = db.session.execute(text('SELECT id FROM Course.curriculum_check WHERE uid=:uid'), {'uid': uid})
+    if not res.rowcount:
+        res = db.session.execute(text('INSERT INTO Course.curriculum_check (uid, time) VALUES (:uid, :time)'), {'uid': uid, 'time': utils.time_now()})
+        db.session.commit()
+        return res.rowcount
+    # Update
+    res = db.session.execute(text('''
+        UPDATE Course.curriculum_check SET time=:new_time WHERE uid=:uid
+    '''), {
+        'new_time': utils.time_now(),
+        'uid': uid
+    })
+    db.session.commit()
+    return res.rowcount
+
 class CurriculumRes(Resource):
     TIME_LIMIT = datetime.timedelta(minutes=5)
     DISABLE_TIME_LIMIT = False
@@ -53,10 +116,24 @@ class CurriculumRes(Resource):
             abort(500, message='Internal Server Error (Go to see the log)')
         db.session.commit()
 
+    @staticmethod
+    def update_curriculum(stuID, clist):
+        """Update the curriculum by stuID"""
+        uid = get_uid(stuID)
+        if check_curriculum_updated(uid):
+            print('[*] {}\'s curriculum is already updated'.format(stuID))
+            return
+        print('[*] Update {}\'s curriculum'.format(stuID))
+        # Iterate through the whole record and insert each course into the curriculum
+        for k in clist.keys():
+            for course in clist[k]:
+                insert_curriculum(uid, course['code'], k, True, False)
+        update_curriculum_check(uid)
+        db.session.commit()
+
     @token_required
     def get(self, stuID, year):
         year = str(year)
-        # TODO: impl some time based updating course list mechanics
         res = db.session.execute(text('''
             SELECT password, course_list_time, course_list_hash FROM `Course`.`user`
             WHERE username=:username
@@ -87,6 +164,7 @@ class CurriculumRes(Resource):
             # Not first time
             else:
                 clist = json.loads(clist)
+            CurriculumRes.update_curriculum(stuID, clist)
             # Leave only `year` data
             tmp = clist[year]
             clist.clear()
