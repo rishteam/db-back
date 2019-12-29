@@ -448,7 +448,6 @@ class FJU_course_list(Resource):
                 'week3'           : check_null(row['week3']),
                 'period3'         : check_null(row['period3']),
                 'classroom3'      : check_null(row['classroom3']),
-                'course_selection': row['course_selection'] # WTF is this?
             })
         return items, 200
 
@@ -494,12 +493,10 @@ class FJU_CourseDetail(Resource):
                 if i:
                     sql_where += " OR tid = '{}'".format(tid)
                 else:
-                    sql_where += " AND (tid = '{}'".format(tid)
-            sql_where += ') '
+                    sql_where += " AND tid = '{}'".format(tid)
 
             sql = 'SELECT * FROM course WHERE {}'.format(sql_where)
             res_detail = db.session.execute(text(sql))
-            # print(sql)
 
             if res_detail.rowcount == 0:
                 rt = {

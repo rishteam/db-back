@@ -4,6 +4,8 @@ from flask_restful import reqparse, abort
 from sqlalchemy import text
 import json
 import hashlib
+import time
+import datetime
 #
 from db import db
 
@@ -72,3 +74,16 @@ def md5(s, salt=''):
 
 # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
 B64_REGEX = re.compile('^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$')
+
+def datetime_from_timestamp(ts):
+    """Return a datetime converted from a timestamp"""
+    return datetime.datetime.fromtimestamp(ts)
+
+def datetime_now():
+    return datetime.datetime.now()
+
+def time_from_datetime(dt):
+    raise NotImplementedError
+
+def time_now():
+    return time.time()

@@ -33,15 +33,13 @@ api.add_resource(course.CourseDetail, api_prefix('/courses/<int:cid>'))
 api.add_resource(course.FJU_course_list, api_prefix('/fju_course/courses'))
 api.add_resource(course.FJU_CourseDetail, api_prefix('/fju_course/courses/details'))
 
-
-
 # Schedule for courses
 from apis import schedule
 
 api.add_resource(schedule.Course_insert, api_prefix(
-    '/fju_course/<int:stuID>/<string:add_course_code>'))
+    '/fju_course/<int:stuID>/<string:course_code>'))
 api.add_resource(schedule.Course_delete, api_prefix(
-    '/fju_course/<int:stuID>/<string:delete_course_code>'))
+    '/fju_course/<int:stuID>/<string:course_code>'))
 
 # Login
 from apis import login

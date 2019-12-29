@@ -1,7 +1,3 @@
-from . import course
+from . import curriculum as curr
 
-a = course.CoursePeriod('D1', 'E0')
-b = course.CoursePeriod('D5', 'D7')
-
-print(b in a)
-print(a in b)
+curr.CurriculumRes.update_curriculum('406262515', None)
