@@ -79,8 +79,8 @@ class Comment_insert(Resource):
 
         try:
             db.session.execute(text('''
-                INSERT INTO comment(uid, className, classOpen, teacher, createDate, Quiz, MidExam, FinalExam, PersonalReport, GroupReport, OtherExam, OtherWork, lvExamAmount, lvFun, lvLearned, lvRequest, lvTeachlear, lvWork, lvRecommend, message)
-                values(:uid, :className, :classOpen, :teacher, :createDate, :Quiz, :MidExam, :FinalExam, :PersonalReport, :GroupReport, :OtherExam, :OtherWork, :lvExamAmount, :lvFun, :lvLearned, :lvRequest, :lvTeachlear, :lvWork, :lvRecommend, :message)
+                INSERT INTO comment(uid, className, classOpen, teacher, createDate, Quiz, MidExam, FinalExam, PersonalReport, GroupReport, OtherExam, OtherWork, lvExamAmount, lvFun, lvLearned, lvRequest, lvTeachlear, lvWork, lvRecommend, message, source)
+                values(:uid, :className, :classOpen, :teacher, :createDate, :Quiz, :MidExam, :FinalExam, :PersonalReport, :GroupReport, :OtherExam, :OtherWork, :lvExamAmount, :lvFun, :lvLearned, :lvRequest, :lvTeachlear, :lvWork, :lvRecommend, :message, :source)
             '''), {
                 'uid'           : uid,
                 'className'     : data['name'],
@@ -101,7 +101,8 @@ class Comment_insert(Resource):
                 'lvTeachlear'   : check_null(args['lvTeachlear']),
                 'lvWork'        : check_null(args['lvWork']),
                 'lvRecommend'   : check_null(args['lvRecommend']),
-                'message'       : check_null(args['message'])
+                'message'       : check_null(args['message']),
+                'source'        : check_null('rish'),
             })
         except exc.SQLAlchemyError as e:
             print(e)
@@ -198,7 +199,9 @@ class Comment(Resource):
                 'lvTeachlear'   : check_null(row['lvTeachlear']),
                 'lvWork'        : check_null(row['lvWork']),
                 'lvRecommend'   : check_null(row['lvRecommend']),
-                'message'       : check_null(row['message'])
+                'message'       : check_null(row['message']),
+                'source'        : check_null(row['source']),
+                'link'          : check_null(row['link'])
             }
             res_list.append(dic)
 

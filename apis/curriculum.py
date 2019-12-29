@@ -11,6 +11,93 @@ from utils import token_required, md5
 from crawler import course
 import utils
 
+CURR_UPDATE_TIME_LIMIT = datetime.timedelta(minutes=5)  # min
+DISABLE_CURR_UPDATE_TIME_LIMIT = False
+
+# Workaround: This is duplicate with get_uid inside `comment.py`
+def get_uid(stuID):
+    """Get the uid by the student ID"""
+    res = db.session.execute(text('SELECT * FROM user WHERE username=:stuID'), {'stuID': stuID})
+    if res.rowcount >= 1:
+        return res.fetchone()['uid']
+    else:
+        raise RuntimeError('No uid referenced to {} in the db.'.format(stuID))
+
+# TODO: move this to model
+def update_or_insert_curriculum(uid, course_code, year, orig, pick, sid=68):
+    """Insert a record into curriculum"""
+    sel_res = db.session.execute(text('''
+        SELECT id FROM curriculum WHERE uid=:uid AND course_code=:course_code AND year=:year
+    '''), {
+        'uid': uid,
+        'course_code': course_code,
+        'year': year
+    })
+    if not sel_res.rowcount:
+        print('[*] - debug : INSERT {} {}'.format(uid, course_code))
+        res = db.session.execute(text('''
+            INSERT INTO curriculum (uid, sid, course_code, year, pick, orig) VALUES
+            (:uid, :sid, :course_code, :year, :pick, :orig)
+        '''), {
+            'uid'        : uid,
+            'sid'        : sid,
+            'course_code': course_code,
+            'year'       : year,
+            'pick'       : pick,
+            'orig'       : orig
+        })
+    else:
+        print('[*] - debug : UPDATE {} {}'.format(uid, course_code))
+        res = db.session.execute(text('''
+            UPDATE curriculum SET uid=:uid, sid=:sid, course_code=:course_code, year=:year, pick=:pick, orig=:orig
+            WHERE id=:id
+        '''), {
+            'uid': uid,
+            'sid': sid,
+            'course_code': course_code,
+            'year': year,
+            'pick': pick,
+            'orig': orig,
+            'id': sel_res.fetchone()['id']
+        })
+    # print(res.rowcount)
+    # TODO: handle exception
+
+def check_curriculum_updated(uid):
+    """Checks if the curriculum has updated within `CURR_UPDATE_TIME_LIMIT`\n
+    Return: `bool`"""
+    res = db.session.execute(text('SELECT * FROM Course.curriculum_check WHERE uid=:uid'), {'uid': uid})
+    if res.rowcount:
+        if res.rowcount > 1:
+            raise RuntimeError('More than one uid existed in curriculum_check')
+        p = res.fetchone() # person
+        dt = utils.datetime_from_timestamp(p['time'])
+        now = utils.datetime_now()
+        if DISABLE_CURR_UPDATE_TIME_LIMIT:
+            return False
+        return now - dt < CURR_UPDATE_TIME_LIMIT
+    else:
+        return False
+
+def update_curriculum_check(uid):
+    """Update the curriculum_check record by uid\n
+    Return: `bool`"""
+    # if not exist
+    res = db.session.execute(text('SELECT id FROM Course.curriculum_check WHERE uid=:uid'), {'uid': uid})
+    if not res.rowcount:
+        res = db.session.execute(text('INSERT INTO Course.curriculum_check (uid, time) VALUES (:uid, :time)'), {'uid': uid, 'time': utils.time_now()})
+        db.session.commit()
+        return res.rowcount
+    # Update
+    res = db.session.execute(text('''
+        UPDATE Course.curriculum_check SET time=:new_time WHERE uid=:uid
+    '''), {
+        'new_time': utils.time_now(),
+        'uid': uid
+    })
+    db.session.commit()
+    return res.rowcount
+
 class CurriculumRes(Resource):
     TIME_LIMIT = datetime.timedelta(minutes=5)
     DISABLE_TIME_LIMIT = False
@@ -53,10 +140,25 @@ class CurriculumRes(Resource):
             abort(500, message='Internal Server Error (Go to see the log)')
         db.session.commit()
 
-    @token_required
-    def get(self, stuID, year):
-        year = str(year)
-        # TODO: impl some time based updating course list mechanics
+    @staticmethod
+    def update_curriculum(stuID, clist):
+        """Update the curriculum by stuID"""
+        uid = get_uid(stuID)
+        if check_curriculum_updated(uid):
+            print('[*] {}\'s curriculum is already updated'.format(stuID))
+            return
+        print('[*] Update {}\'s curriculum'.format(stuID))
+        # Iterate through the whole record and insert each course into the curriculum
+        for k in clist.keys():
+            for course in clist[k]:
+                update_or_insert_curriculum(uid, course['code'], k, True, False)
+        update_curriculum_check(uid)
+        db.session.commit()
+
+    @staticmethod
+    def crawl_curriculum_data(stuID, year):
+        """Crawl and update the curriculum if necessary (expired)\n
+        Return: [{}, {}, ...] each dict is a course"""
         res = db.session.execute(text('''
             SELECT password, course_list_time, course_list_hash FROM `Course`.`user`
             WHERE username=:username
@@ -72,25 +174,40 @@ class CurriculumRes(Resource):
             time_delta = datetime.datetime.now() - cltime
 
             old_clist_hash, clist = CurriculumRes.get_course_list_hash(stuID)
-            # Whether course list expired or not
-            # or first time
+            # Whether course list expired or not; or first time
             if time_delta >= CurriculumRes.TIME_LIMIT \
-                or (clist == None and old_clist_hash == None) \
-                or CurriculumRes.DISABLE_TIME_LIMIT:
+                    or (clist is None and old_clist_hash is None) \
+                    or CurriculumRes.DISABLE_TIME_LIMIT:
                 CurriculumRes.update_course_list_time(stuID)
                 # Update list hash if necessary
-                clist = course.get_course_list(stuID, passwd, None, course.ALL_YEAR) # FIXME: course.ALL_YEAR is not reflecting one's grade
+                # FIXME: course.ALL_YEAR is not reflecting one's grade
+                clist = course.get_course_list(
+                    stuID, passwd, None, course.ALL_YEAR)
                 clist_hash = md5(clist)
                 # Save the course list and hash if necessary
                 if clist_hash != old_clist_hash:
-                    CurriculumRes.update_course_list_and_hash(stuID, clist, clist_hash)
+                    CurriculumRes.update_course_list_and_hash(
+                        stuID, clist, clist_hash)
             # Not first time
             else:
                 clist = json.loads(clist)
+            # Update or Insert the curriculum
+            CurriculumRes.update_curriculum(stuID, clist)
             # Leave only `year` data
             tmp = clist[year]
             clist.clear()
             clist[year] = tmp
+            # Add ORIGinal field
+            for c in clist[year]:
+                c['orig'] = True
+                c['pick'] = False
+        return clist
+
+    @token_required
+    def get(self, stuID, year):
+        year = str(year)
+        clist = CurriculumRes.crawl_curriculum_data(stuID, year)
+        # TODO: Also return courses are pick
         return clist, 200
 
 class CurriculumList(Resource):
