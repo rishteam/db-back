@@ -13,6 +13,8 @@ CUR = 0
 if __name__ == '__main__':
     r = requests.Session()
 
+    info = course.get_person_identity(r, *testacc[1])
+    print(info)
     # cur_hash = hashlib.md5(json_li).hexdigest()
     # print(cur_hash)
 
