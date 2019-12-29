@@ -35,6 +35,8 @@ api.add_resource(course.FJU_CourseDetail, api_prefix('/fju_course/courses/detail
 
 # Schedule for courses
 from apis import schedule
+api.add_resource(schedule.Course_insert, api_prefix('/fju_course/<int:stuID>/<string:course_code>'))
+api.add_resource(schedule.Course_delete, api_prefix('/fju_course/<int:stuID>/<string:course_code>'))
 
 api.add_resource(schedule.Course_insert, api_prefix(
     '/fju_course/<int:stuID>/<string:course_code>'))
@@ -50,8 +52,7 @@ api.add_resource(login.LoginRes, api_prefix('/login'))
 # Curriculums
 from apis import curriculum
 api.add_resource(curriculum.CurriculumRes, api_prefix('/users/<int:stuID>/curriculums/<int:year>'))
-api.add_resource(curriculum.CurriculumList,
-                                 api_prefix('/users/<int:stuID>/curriculums'))
+api.add_resource(curriculum.CurriculumList,api_prefix('/users/<int:stuID>/curriculums'))
 
 
 # Comment

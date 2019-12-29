@@ -332,8 +332,8 @@ class FJU_course_list(Resource):
     param_parser.add_argument('name', type=str)
     param_parser.add_argument('teacher', type=str)
     param_parser.add_argument('department', type=str)
-    param_parser.add_argument('weekday', type=str)
-    param_parser.add_argument('time', type=str)
+    param_parser.add_argument('day', type=str)
+    param_parser.add_argument('period', type=str)
     param_parser.add_argument('include', type=bool)
 
     def get(self):
@@ -345,7 +345,7 @@ class FJU_course_list(Resource):
             'teacher',
             'department'
         ]
-        not_query = ['weekday', 'time', 'include']
+        not_query = ['day', 'period', 'include']
         condit += not_query # for checking
         selected_condit = []
         sql_where = ''
@@ -367,10 +367,10 @@ class FJU_course_list(Resource):
                     params[p] = args[p] + '%'
         # Prepare weekday part of SQL WHERE
         weekday = None
-        weekday_arg = args['weekday'] if 'weekday' in selected_condit and 'weekday' in args else None
+        weekday_arg = args['day'] if 'day' in selected_condit and 'day' in args else None
         if weekday_arg:
             if not re.match(r'^[1-8]{1,8}$', weekday_arg):
-                return {'message': '`weekday` must be numbers'}, 400
+                return {'message': '`day` must be numbers'}, 400
             weekday = convert_weekday2list(weekday_arg)
             first = True
             for i in range(1, len(weekday)):
@@ -382,13 +382,13 @@ class FJU_course_list(Resource):
             sql_where = '({})'.format(sql_where)
         # Prepare time (D?-D?)
         # Notice: TIME_NONE means empty time and None means it didn't pass time option in
-        if 'time' in selected_condit:
-            if args['time'] == 'None':
+        if 'period' in selected_condit:
+            if args['period'] == 'None':
                 time = TIME_NONE
                 sql_where = '' # ignore the weekday
                 sql_where += "(period='' AND period2='' AND period3='')"
             else:
-                time = args['time'].split('-')
+                time = args['period'].split('-')
                 time = CoursePeriod(*time)
         else:
             time = None
