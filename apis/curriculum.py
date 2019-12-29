@@ -98,6 +98,67 @@ def update_curriculum_check(uid):
     db.session.commit()
     return res.rowcount
 
+def get_picked_curriculum_cc(uid, year):
+    """Get `course_code` of picked courses from curriculum by uid"""
+    res = db.session.execute(text('''
+        SELECT * FROM curriculum WHERE uid=:uid AND year=:year AND pick=1 AND orig=0
+    '''), {
+        'uid': uid,
+        'year': year
+    })
+    clist = []
+    if res.rowcount:
+        for c in res:
+            clist.append(c['course_code'])
+    return clist
+
+# TODO: some columns don't exist in the fju_course
+def get_course_detail_by_course_code(course_code):
+    """Get the details of a course by its `course_code`"""
+    res = db.session.execute(text('''
+        SELECT * FROM fju_course WHERE course_code=:course_code
+    '''), {
+        'course_code': course_code
+    })
+    clist = []
+    time_legend = ['day', 'week', 'period', 'classroom']
+    if res.rowcount:
+        for row in res:
+            c = {}
+            c['cat'] = row['kind']
+            c['sem'] = ''
+            c['code'] = row['course_code']
+            c['note'] = ''
+            c['time'] = []
+            for i in range(1, 4):
+                tseg = {}
+                # for num part of ts
+                if i == 1:
+                    i = ''
+                else:
+                    i = str(i)
+                # skip empty
+                if row['day'+i] == '':
+                    continue
+                # enumerate all cols
+                for tl in time_legend:
+                    if tl == 'day':
+                        tseg['which_day'] = row[tl+i]
+                        continue
+                    tseg[tl] = row[tl+i]
+                c['time'].append(tseg)
+            c['year'] = ''
+            c['point'] = row['score']
+            c['cfield'] = ''
+            c['sem_th'] = ''
+            c['stu_cat'] = ''
+            c['subject'] = row['name']
+            c['teacher'] = row['teacher']
+            c['main_code'] = ''
+            c['department'] = row['department']
+            clist.append(c)
+    return clist
+
 class CurriculumRes(Resource):
     TIME_LIMIT = datetime.timedelta(minutes=5)
     DISABLE_TIME_LIMIT = False
@@ -194,6 +255,8 @@ class CurriculumRes(Resource):
             # Update or Insert the curriculum
             CurriculumRes.update_curriculum(stuID, clist)
             # Leave only `year` data
+            if year not in clist:
+                abort(400, message='Specified year {} doesn\'t exist'.format(year))
             tmp = clist[year]
             clist.clear()
             clist[year] = tmp
@@ -203,11 +266,26 @@ class CurriculumRes(Resource):
                 c['pick'] = False
         return clist
 
+    @staticmethod
+    def get_picked_curriculum(stuID, year):
+        """Get picked curriculums"""
+        uid = get_uid(stuID)
+        cclist = get_picked_curriculum_cc(uid, year)
+        clist = []
+        for cc in cclist:
+            # print('[*] debug - get course detail {}'.format(cc))
+            detail = get_course_detail_by_course_code(cc)
+            for c in detail:
+                c['orig'] = False
+                c['pick'] = True
+            clist += detail
+        return clist
+
     @token_required
     def get(self, stuID, year):
         year = str(year)
         clist = CurriculumRes.crawl_curriculum_data(stuID, year)
-        # TODO: Also return courses are pick
+        clist[year] += CurriculumRes.get_picked_curriculum(stuID, year)
         return clist, 200
 
 class CurriculumList(Resource):
