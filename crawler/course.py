@@ -1,9 +1,12 @@
 import re
+import json
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
 
 from .parser import courseHTML_to_dict, get_courseList_link_from_home
+
+# TODO: implement user class for loggined logic
 
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
@@ -80,10 +83,12 @@ def grade_to_num(grade):
 
 # returns a person's identity
 # {
-#   'DNP': 'D'/'N'/'P'  # 日間 / 夜間 / 進修
+#   'DNP': 'D'/'N'/'P'      # 日間 / 夜間 / 進修
 #   'grade': [一二三四]{1}[甲乙]{1}       # 年級
-#   'd_abbr': '資工'    # 系所縮寫
-#   'name': '鍾秉桓'
+#   'd_abbr': '資工'         # 系所縮寫
+#   'name': '鍾秉桓'         # 姓名
+#   'total_avg_score': 87   # 平均分數
+#   'complete_point': 128   # 已修學分數
 # }
 def get_person_identity(r, user, passwd):
     # login
@@ -117,6 +122,16 @@ def get_person_identity(r, user, passwd):
             info['grade'] = gr
         elif t == targets[2]:
             info['name'] = text
+    # Crawl homepage
+    url = 'https://stdntvpn.dev.fju.edu.tw/student/api/,DanaInfo=140.136.251.210,dom=1,CT=sxml+'
+    # average score
+    res = r.get(url + 'WebAPIScore')
+    score = json.loads(res.text)['average']
+    info['total_avg_score'] = score
+    # complete point
+    res = r.get(url + 'WebAPIAcadCredit')
+    complete_point = json.loads(res.text)['totalCredit']
+    info['complete_point'] = complete_point
     # Logout
     logout_res = logout(r)
     print('log out = {}'.format(logout_res.status_code))
