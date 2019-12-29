@@ -297,10 +297,12 @@ class CoursePeriod:
         self.start = start
         self.end = end
     def __eq__(this, other):
+        """a == b"""
         if isinstance(this, type(other)):
             return this.start == other.start and this.end == other.end
         return False
     def __contains__(self, item):
+        """a in b"""
         if not isinstance(item, type(self)):
             raise TypeError('The item should be CoursePeriod not {}'.format(type(item)))
         p2i = CoursePeriod.PERIOD2IDX

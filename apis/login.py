@@ -55,8 +55,8 @@ class LoginRes(Resource):
             # If not existing, add a new user
             if res.rowcount == 0:
                 sql = text('''
-                    INSERT INTO `Course`.`user` (`username`, `password`, `curpoint`, `perm`, `firstlogin`, `lastlogin`, `token`)
-                    VALUES (:username, :passwd, '0', '0', :time, :time, :token);
+                    INSERT INTO `Course`.`user` (`username`, `password`, `perm`, `firstlogin`, `lastlogin`, `token`)
+                    VALUES (:username, :passwd, 0, :time, :time, :token);
                     ''')
                 db.session.execute(sql, {
                     'username': user,
