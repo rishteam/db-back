@@ -49,8 +49,7 @@ api.add_resource(login.LoginRes, api_prefix('/login'))
 # Curriculums
 from apis import curriculum
 api.add_resource(curriculum.CurriculumRes, api_prefix('/users/<int:stuID>/curriculums/<int:year>'))
-api.add_resource(curriculum.CurriculumList,
-                                 api_prefix('/users/<int:stuID>/curriculums'))
+api.add_resource(curriculum.CurriculumList,api_prefix('/users/<int:stuID>/curriculums'))
 
 # Comment
 from apis import comment

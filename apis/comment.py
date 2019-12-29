@@ -5,6 +5,7 @@ from sqlalchemy import text, exc
 import datetime
 
 from db import db
+import models
 from utils import check_null, token_required
 
 def get_uid(stuID):
@@ -178,9 +179,11 @@ class Comment(Resource):
         # Collect the comments
         res_list = []
         for row in res:
+            user = models.get_user(row['uid'])
             dic = {
                 'commentID'     : check_null(row['commentID']),
-                'stuID'         : check_null(get_stuID(row['uid'])),
+                'stuID'         : check_null(user['username']),
+                'nickname'      : check_null(user['nickname']),
                 'classOpen'     : check_null(row['classOpen']),
                 'className'     : check_null(row['className']),
                 'teacher'       : check_null(row['teacher']),
