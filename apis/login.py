@@ -3,7 +3,7 @@ from flask_restful import Resource, reqparse
 from sqlalchemy import text
 import time
 
-from crawler.course import try_to_login
+from crawler.course import try_to_login, get_person_identity, grade_to_num
 from utils import md5
 from db import db
 import config
@@ -15,15 +15,31 @@ login_parser.add_argument('username', type=str, required=True,
 login_parser.add_argument('password', type=str, required=True,
                             help='Please provide the password or reference the API Docs')
 
+def update_user_info(stuID, info):
+    """Update the user infomation"""
+    res = db.session.execute(text('''
+        UPDATE user SET complete_point=:complete_point, avg_score=:avg_score, grade=:grade, real_name=:real_name
+        WHERE username=:stuID
+    '''), {
+        'complete_point': info['complete_point'],
+        'avg_score': info['total_avg_score'],
+        'grade': grade_to_num(info['grade']),
+        'real_name': info['name'],
+        'stuID': stuID
+    })
+    db.session.commit()
+
 class LoginRes(Resource):
     def post(self):
         args = login_parser.parse_args() # get args if succeeded
         user, passwd = args['username'], args['password']
         # Login
         r = requests.Session()
+        print('[*] debug - try to login')
         fail, _ = try_to_login(r, user, passwd)
         if fail:
             return {'message': 'Failed to login'}, 400
+        print('[*] debug - login success')
 
         # Generate the token
         dic = {'username': user, 'password': passwd}
@@ -62,5 +78,9 @@ class LoginRes(Resource):
                     'time': time.time()
                 })
                 db.session.commit()
+            # Update user information
+            # TODO: make this async
+            info = get_person_identity(r, user, passwd)
+            update_user_info(user, info)
 
         return {'token': token}, 200

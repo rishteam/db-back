@@ -24,16 +24,7 @@ def user_info_by_uid(uid):
     res = db.session.execute(text('''
         SELECT * FROM user WHERE uid=:uid
     '''), {'uid': uid})
-    info = {
-        'nickname': None,
-        'score': None,
-        'complete_course': None,
-        'school': None,
-        'department': None,
-        'grade': None,
-        'avg_grade': None,
-        'last_login': None
-    }
+    info = {}
     if res.rowcount > 1:
         uids = []
         for i in res:
@@ -44,13 +35,13 @@ def user_info_by_uid(uid):
     # Only one user
     res = res.fetchone()
     info['nickname'] = res['nickname']
-    info['score'] = res['curpoint']
+    info['complete_point'] = res['complete_point']
     info['complete_course'] = res['complete_course']
     # get school
     info['school'] = get_school_name_by_sid(res['sid'])
     info['department'] = res['department']
     info['grade'] = res['grade']
-    info['avg_grade'] = res['avg_grade']
+    info['avg_score'] = res['avg_score']
     info['last_login'] = datetime.datetime.fromtimestamp(res['lastlogin']).strftime("%Y-%m-%d %H:%M:%S")
     return info
 
@@ -63,3 +54,7 @@ class StudentInfo(Resource):
         uid = get_uid(stuID)
         info = user_info_by_uid(uid)
         return info, 200
+
+    @token_required
+    def patch(self, stuID):
+        return 'NotImpletemented', 500
