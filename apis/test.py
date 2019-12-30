@@ -1,3 +1,7 @@
-from . import curriculum as curr
+from . import schedule as sc
 
-curr.CurriculumRes.update_curriculum('406262515', None)
+a = sc.CoursePeriod('DN', 'DN')
+b = sc.CoursePeriod('D2', 'DN')
+
+print(a in b)
+print(b in a)
