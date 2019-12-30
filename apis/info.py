@@ -1,8 +1,9 @@
 import datetime
 from flask_restful import Resource
 from sqlalchemy import text
-from db import db
 
+import models
+from db import db
 from utils import token_required
 # TODO: this will be refactor to `models.py`
 def get_uid(stuID):
@@ -12,7 +13,6 @@ def get_uid(stuID):
     print('[*] debug : {}'.format(res.rowcount))
     if res.rowcount >= 1:
         u = res.fetchone()
-        print(u)
         return u['uid']
     else:
         raise RuntimeError('No uid referenced to {} in the db.'.format(stuID))
@@ -40,7 +40,7 @@ def user_info_by_uid(uid):
     res = res.fetchone()
     info['nickname'] = res['nickname']
     info['complete_point'] = res['complete_point']
-    info['complete_course'] = res['complete_course']
+    info['select_course'] = res['select_course']
     # get school
     info['school'] = get_school_name_by_sid(res['sid'])
     info['department'] = res['department']
@@ -49,6 +49,15 @@ def user_info_by_uid(uid):
     info['last_login'] = datetime.datetime.fromtimestamp(res['lastlogin']).strftime("%Y-%m-%d %H:%M:%S")
     return info
 
+def get_num_of_selected_courses(uid):
+    """Get the number of selected courses by uid\n
+    column `select_course` in table `curriculum`"""
+    res = db.session.execute(text(
+        'SELECT COUNT(*) AS num FROM curriculum WHERE pick=1 AND uid=:uid'), {'uid': uid})
+    if res.rowcount:
+        return res.fetchone()['num']
+    return 0
+
 class StudentInfo(Resource):
     """API for query the information of a specific student\n
     methods:
@@ -56,6 +65,11 @@ class StudentInfo(Resource):
     @token_required
     def get(self, stuID):
         uid = get_uid(stuID)
+
+        # Update number of selected course of a user
+        user = models.get_user(uid)
+        models.set_user_select_course(uid, get_num_of_selected_courses(uid))
+
         info = user_info_by_uid(uid)
         return info, 200
 
