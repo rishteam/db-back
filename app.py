@@ -59,4 +59,4 @@ api.add_resource(comment.Comment_delete, api_prefix('/comments/<int:stuID>/<int:
 api.add_resource(comment.Comment, api_prefix('/comments'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
+    app.run(host='0.0.0.0', port=80, threaded=True)

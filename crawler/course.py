@@ -72,8 +72,16 @@ def try_to_login(r, user, passwd):
 # e.g. grade_to_num('三乙') -> 3
 def grade_to_num(grade):
     # TODO: 阿延畢的勒
-    if not re.match('^[一二三四]{1}[甲乙]{1}$', grade):
-        raise ValueError('`grade` should match /^[一二三四]{1}[甲乙]{1}$/')
+    print('[*] debug: grade = {}'.format(grade))
+    # if not re.match('^[一二三四]{1}[甲乙]{1}$', grade):
+    #     raise ValueError('`grade` should match /^[一二三四]{1}[甲乙]{1}$/')
+    if grade[0] == '碩':
+        return {
+            '一': 11,
+            '二': 12,
+            '三': 13,
+            '四': 14
+        }[grade[1]]
     return {
         '一': 1,
         '二': 2,
