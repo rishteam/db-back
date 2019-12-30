@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from db import db
 from utils import token_required, check_null
+import models
 
 import re
 import requests
@@ -56,7 +57,6 @@ class Course_delete(Resource):
         db.session.commit()
         return {"result": "Success",
                 "course_code" : course_code}, 200
-
 
 class Course_insert(Resource):
     @token_required
