@@ -336,6 +336,7 @@ class FJU_course_list(Resource):
     param_parser.add_argument('day', type=str)
     param_parser.add_argument('period', type=str)
     param_parser.add_argument('include', type=bool)
+    param_parser.add_argument('page', type=int)
 
     def get(self):
         args = FJU_course_list.param_parser.parse_args()
@@ -352,7 +353,6 @@ class FJU_course_list(Resource):
         selected_condit = []
         sql_where = ''
 
-
        # Check if it provides more than one param
         is_none_data = True
         for p in condit:
@@ -360,7 +360,32 @@ class FJU_course_list(Resource):
                 is_none_data = False
                 break
         if is_none_data:
-            return {'message': 'You need to provide more than one parameter.'}, 400
+            page_num = args['page'] if args['page'] else 0
+            res = db.session.execute(text('SELECt * FROM fju_course LIMIT :page, 20'), {'page': page_num})
+            items = []
+            for row in res:
+                items.append({
+                    'course_code': check_null(row['course_code']),
+                    'name'       : check_null(row['name']),
+                    'teacher'    : check_null(row['teacher']),
+                    'department' : check_null(row['department']),
+                    'score'      : check_null(row['score']),
+                    'kind'       : check_null(row['kind']),
+                    'times'      : check_null(row['times']),
+                    'day'        : check_null(row['day']),
+                    'week'       : check_null(row['week']),
+                    'period'     : check_null(row['period']),
+                    'classroom'  : check_null(row['classroom']),
+                    'day2'       : check_null(row['day2']),
+                    'week2'      : check_null(row['week2']),
+                    'period2'    : check_null(row['period2']),
+                    'classroom2' : check_null(row['classroom2']),
+                    'day3'       : check_null(row['day3']),
+                    'week3'      : check_null(row['week3']),
+                    'period3'    : check_null(row['period3']),
+                    'classroom3' : check_null(row['classroom3']),
+                })
+            return items, 200
 
         # Prepare the params depends on the condit
         for p in condit:
@@ -512,15 +537,15 @@ class FJU_CourseDetail(Resource):
             sql_where = ''
             sql_where += "name = '{}'".format(row['name'])
             sql_where += " AND year = '108'"
-            sql_where += " AND sid = '68'"
-            tids = FJU_CourseDetail.get_fju_teacher_id(row['teacher'], row['department'])
-            for i, tid in enumerate(tids):
-                if i:
-                    sql_where += " OR tid = '{}'".format(tid)
-                else:
-                    sql_where += " AND tid = '{}'".format(tid)
+            # sql_where += " AND sid = '68'"
+            # tids = FJU_CourseDetail.get_fju_teacher_id(row['teacher'], row['department'])
+            # for i, tid in enumerate(tids):
+            #     if i:
+            #         sql_where += " OR tid = '{}'".format(tid)
+            #     else:
+            #         sql_where += " AND tid = '{}'".format(tid)
 
-            sql = 'SELECT * FROM course WHERE {}'.format(sql_where)
+            sql = 'SELECT * FROM fju_course_detail WHERE {}'.format(sql_where)
             res_detail = db.session.execute(text(sql))
 
             if res_detail.rowcount == 0:
@@ -538,7 +563,8 @@ class FJU_CourseDetail(Resource):
                     'system'     : check_null(row_detail['system']),
                     'link'       : check_null(row_detail['link']),
                     'student'    : check_null(row_detail['student']),
-                    'lang'       : check_null(row_detail['lang'])
+                    'lang'       : check_null(row_detail['lang']),
+                    'grade'      : check_null(row_detail['grade'])
                 }
 
         return rt, 200

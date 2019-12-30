@@ -8,8 +8,12 @@ from utils import token_required
 def get_uid(stuID):
     """Get the uid by the student ID"""
     res = db.session.execute(text('SELECT * FROM user WHERE username=:stuID'), {'stuID': stuID})
+    print('[*] debug : {}'.format(stuID))
+    print('[*] debug : {}'.format(res.rowcount))
     if res.rowcount >= 1:
-        return res.fetchone()['uid']
+        u = res.fetchone()
+        print(u)
+        return u['uid']
     else:
         raise RuntimeError('No uid referenced to {} in the db.'.format(stuID))
 # TODO: this will be refactor to `models.py`

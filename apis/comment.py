@@ -71,10 +71,9 @@ class Comment_insert(Resource):
         ]
         param_parser = reqparse.RequestParser()
         for i in condit:
-            param_parser.add_argument(i, type=str, help='Please provide `{}`'.format(i), location='form')
-
+            param_parser.add_argument(i, type=str, help='Please provide `{}`'.format(i))
         args = param_parser.parse_args()
-        # print(cid)
+        # print(args)
         res = db.session.execute(text('SELECT name, teacher, department FROM fju_course WHERE course_code=:cid'), {'cid': cid})
         data = res.fetchone()
 
