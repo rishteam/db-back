@@ -12,7 +12,7 @@ def get_user(uid):
     if res.rowcount:
         return res.fetchone()
     else:
-        return None
+        raise RuntimeError('User not found: uid={}'.format(uid))
 
 def set_user_select_course(uid, sc):
     res = db.session.execute(text('UPDATE user SET select_course=:sel'), {'sel': sc})

@@ -2,7 +2,10 @@ import os
 
 DEBUG = True
 
-SECRET_KEY = os.urandom(32)
+if DEBUG:
+    SECRET_KEY = 'A'*32
+else:
+    SECRET_KEY = os.urandom(32)
 
 DIALECT = 'mysql'
 DRIVER = 'mysqldb'
