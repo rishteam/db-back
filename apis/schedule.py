@@ -1,9 +1,12 @@
+import json
+import datetime
 from flask import Flask, request
 from flask_restful import Api, Resource, abort, reqparse
 from sqlalchemy import text
 
 from db import db
-from utils import token_required, check_null
+import utils
+from utils import token_required, check_null, md5
 import models
 
 import re
@@ -52,13 +55,11 @@ class Course_delete(Resource):
 
 
         # 找到之後刪除
-        db.session.execute(text('''
-            DELETE FROM curriculum
-            WHERE id=:id
-        '''), {
-            'id' : commentID
-        })
+        db.session.execute('DELETE FROM curriculum WHERE id=:id', {'id' : commentID})
+        db.session.commit()
 
+        # Update user.schedule_data_changed
+        db.session.execute('UPDATE user SET schedule_data_changed=1 WHERE uid=:uid', {'uid': uid})
         db.session.commit()
         return {"result": "Success",
                 "course_code" : course_code}, 200
@@ -176,17 +177,18 @@ class Course_insert(Resource):
                                     return {'result': False,
                                             'course_code': chose_course_code[timelist[i][s+k]]}, 400
 
-        db.session.execute('INSERT INTO curriculum(uid, sid, course_code, year, pick, orig) VALUES (:uid, 68, :coursecode, 1081, 1, 0)',
-        {
+        db.session.execute('INSERT INTO curriculum(uid, sid, course_code, year, pick, orig) VALUES (:uid, 68, :coursecode, 1081, 1, 0)', {
             'coursecode': course_code,
             'uid': uid
         })
+        db.session.commit()
 
+        # Update user.schedule_data_changed
+        db.session.execute('UPDATE user SET schedule_data_changed=1 WHERE uid=:uid', {'uid': uid})
         db.session.commit()
 
         return {'result': 'Success',
                 'course_code': course_code}, 200
-
 
 def make_CoursePeriod(x):
     """Turn the str 'D?-D?' into the CoursePeriod"""
@@ -271,6 +273,36 @@ class Auto_course_insert(Resource):
 
         return space_time
 
+    TIME_LIMIT = datetime.timedelta(minutes=5)
+    DISABLE_TIME_LIMIT = False
+
+    @staticmethod
+    def load_schedule_data(uid):
+        res = db.session.execute(text('SELECT schedule_data FROM user WHERE uid=:uid'), {'uid': uid})
+        return res.fetchone()['schedule_data']
+
+    @staticmethod
+    def load_schedule_data_if_not_expired(uid):
+        """Load the schedule data in dict if not expired"""
+        # Get time and time check
+        user = models.get_user(uid)
+        # if the schedule needed to update (course insert/delete)
+        if user['schedule_data_changed']:
+            db.session.execute(text('UPDATE user SET schedule_data_changed=0 WHERE uid=:uid'), {'uid': uid})
+            db.session.commit()
+            return None
+        # time expired?
+        last = user['schedule_data_time']
+        if not last:
+            return None
+        last = utils.datetime_from_timestamp(last)
+
+        if not Auto_course_insert.DISABLE_TIME_LIMIT and utils.time_limit_check(last, Auto_course_insert.TIME_LIMIT):
+            d = Auto_course_insert.load_schedule_data(uid)
+            if d:
+                return json.loads(d)
+        return None
+
     # @token_required
     def get(self, stuID, weekday, timeperiod):
         idx = ['', '2', '3']
@@ -280,20 +312,7 @@ class Auto_course_insert(Resource):
         day_num2eng = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         timelist = [[0]*15 for i in range(7)]
 
-        res = db.session.execute(
-            text('SELECT uid FROM `user` WHERE username=:user'), {
-                'user': stuID}
-        )
-        data = {
-            'Mon': {},
-            'Tue': {},
-            'Wed': {},
-            'Thu': {},
-            'Fri': {},
-            'Sat': {},
-            'Sun': {}
-        }
-
+        res = db.session.execute(text('SELECT uid FROM `user` WHERE username=:user'), {'user': stuID})
         uid = res.fetchone()[0]
         space_time = Auto_course_insert.get_free_period(uid, timelist)
 
@@ -301,69 +320,85 @@ class Auto_course_insert(Resource):
         ALL_PERIOD = ['D0', 'D1', 'D2', 'D3', 'D4', 'DN', 'D5', 'D6', 'D7', 'D8', 'E0', 'E1', 'E2', 'E3', 'E4']
         PERIOD2IDX = {'D0' : 0, 'D1' : 1, 'D2' : 2, 'D3' : 3, 'D4' : 4, 'DN' : 5, 'D5' : 6, 'D6' : 7, 'D7' : 8, 'D8' : 9, 'E0' : 10, 'E1' : 11, 'E2' : 12, 'E3' : 13, 'E4' : 14}
 
-        # print(space_time)
-        # Remove in the funture because use api to call api
-        for i in range(0, 7):
-            for j in space_time[i]:
-                sql = 'SELECT * FROM fju_course WHERE '
-                sql += "day='{0}' OR day2='{0}' OR day3='{0}'".format(day[i])
+        data = Auto_course_insert.load_schedule_data_if_not_expired(uid)
+        if not data:
+            data = {
+                'Mon': {},
+                'Tue': {},
+                'Wed': {},
+                'Thu': {},
+                'Fri': {},
+                'Sat': {},
+                'Sun': {}
+            }
+            print('[*] debug: Collecting pickable courses')
+            for i in range(0, 7):
+                for j in space_time[i]:
+                    sql = 'SELECT * FROM fju_course WHERE '
+                    sql += "day='{0}' OR day2='{0}' OR day3='{0}'".format(day[i])
 
-                res = db.session.execute(text(sql))
-                # print(res.rowcount)
-                time = j.split('-')
-                time = CoursePeriod(*time)
-                # print(time)
+                    res = db.session.execute(text(sql))
+                    # print(res.rowcount)
+                    time = j.split('-')
+                    time = CoursePeriod(*time)
+                    # print(time)
 
-                candi = []
-                for row in res:
-                    # Check period of a course if necessary
-                    p1 = make_CoursePeriod(row['period']) if row['period'] else None
-                    p2 = make_CoursePeriod(row['period2']) if row['period2'] else None
-                    p3 = make_CoursePeriod(row['period3']) if row['period3'] else None
-                    plist = [p1, p2, p3]
-                    succ = True
-                    for p in plist:
-                        if p and p not in time:
-                            # print(p)
-                            succ = False
-                    if succ:
-                        candi.append({
-                            'course_code': check_null(row['course_code']),
-                            'name'       : check_null(row['name']),
-                            'teacher'    : check_null(row['teacher']),
-                            'department' : check_null(row['department']),
-                            'score'      : check_null(row['score']),
-                            'kind'       : check_null(row['kind']),
-                            'times'      : check_null(row['times']),
-                            'day'        : check_null(row['day']),
-                            'week'       : check_null(row['week']),
-                            'period'     : check_null(row['period']),
-                            'classroom'  : check_null(row['classroom']),
-                            'day2'       : check_null(row['day2']),
-                            'week2'      : check_null(row['week2']),
-                            'period2'    : check_null(row['period2']),
-                            'classroom2' : check_null(row['classroom2']),
-                            'day3'       : check_null(row['day3']),
-                            'week3'      : check_null(row['week3']),
-                            'period3'    : check_null(row['period3']),
-                            'classroom3' : check_null(row['classroom3'])
-                        })
-                data[day[i]].update({j :  candi})
-                # end for row
-            # end for j
-        #end for i
+                    candi = []
+                    for row in res:
+                        # Check period of a course if necessary
+                        p1 = make_CoursePeriod(row['period']) if row['period'] else None
+                        p2 = make_CoursePeriod(row['period2']) if row['period2'] else None
+                        p3 = make_CoursePeriod(row['period3']) if row['period3'] else None
+                        plist = [p1, p2, p3]
+                        succ = True
+                        for p in plist:
+                            if p and p not in time:
+                                # print(p)
+                                succ = False
+                        if succ:
+                            candi.append({
+                                'course_code': check_null(row['course_code']),
+                                'name'       : check_null(row['name']),
+                                'teacher'    : check_null(row['teacher']),
+                                'department' : check_null(row['department']),
+                                'score'      : check_null(row['score']),
+                                'kind'       : check_null(row['kind']),
+                                'times'      : check_null(row['times']),
+                                'day'        : check_null(row['day']),
+                                'week'       : check_null(row['week']),
+                                'period'     : check_null(row['period']),
+                                'classroom'  : check_null(row['classroom']),
+                                'day2'       : check_null(row['day2']),
+                                'week2'      : check_null(row['week2']),
+                                'period2'    : check_null(row['period2']),
+                                'classroom2' : check_null(row['classroom2']),
+                                'day3'       : check_null(row['day3']),
+                                'week3'      : check_null(row['week3']),
+                                'period3'    : check_null(row['period3']),
+                                'classroom3' : check_null(row['classroom3'])
+                            })
+                    data[day[i]].update({j :  candi})
+                    # end for row
+                # end for j
+            #end for i
+
+            # Updates the data
+            db.session.execute(text('''
+                UPDATE user SET schedule_data=:schedule_data, schedule_data_time=:schedule_data_time WHERE uid=:uid
+            '''), {'schedule_data': json.dumps(data), 'schedule_data_time': utils.time_now(), 'uid': uid})
+            db.session.commit()
+        else:
+            print('[*] debug: deserialize schedule_data')
         weekday = day_num2eng[weekday]
         tlist = []
-        for i in data[weekday]:
-            print(i)
+        for i in data[weekday]: # Turn period into CoursePeriod
             tlist.append(CoursePeriod(*(i.split('-'))))
-        print(tlist)
-        cur_time =  CoursePeriod(timeperiod, timeperiod)
+        cur_time = CoursePeriod(timeperiod, timeperiod) # e.g. D4 = D4-D4
         res_list = None
+        # See if it exists a CoursePeriod which includes cur_time
         for t in tlist:
             if cur_time in t:
                 k = str(t)
-                print(k)
                 res_list = data[weekday][k]
                 break
         return res_list, 200

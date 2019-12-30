@@ -87,3 +87,11 @@ def time_from_datetime(dt):
 
 def time_now():
     return time.time()
+
+def time_limit_check(last, limit):
+    """Check if the time limit is excceeded.\n
+    Return: `bool`
+    - `True`: the time delta is less than the limit
+    - `False`: expired"""
+    print('[*] time_limit_check(): {}'.format(datetime_now() - last))
+    return datetime_now() - last < limit
