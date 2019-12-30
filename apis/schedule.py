@@ -119,13 +119,13 @@ class Course_insert(Resource):
                             for j in range(0, 15):
                                 if period[j] == str(have_course['period'+m])[0:2]:
                                         s = j
-                                elif period[j] == str(have_course['period'+m])[3:5]:
+                                if period[j] == str(have_course['period'+m])[3:5]:
                                         e = j
                             for k in range(0, e-s+1):
                                 timelist[i][s+k] = cnt
                 cnt += 1
         # DEBUG
-        # debug(period, timelist)
+        debug(period, timelist)
 
         # add course
         want_add = db.session.execute(text('''
@@ -144,12 +144,15 @@ class Course_insert(Resource):
                     if day[i] == row['day'+m]:
                         s = 0
                         e = 0
+                        print(row['period'])
                         for j in range(0, 15):
                             if period[j] == str(row['period'+m])[0:2]:
                                 s = j
-                            elif period[j] == str(row['period'+m])[3:5]:
+                            if period[j] == str(row['period'+m])[3:5]:
                                 e = j
+                        print(s,e)
                         for k in range(0, e-s+1):
+                                print(s+k)
                                 if timelist[i][s+k] != 0:
                                     return {'result': False,
                                             'course_code': chose_course_code[timelist[i][s+k]]}, 400
@@ -224,7 +227,7 @@ class Auto_course_insert(Resource):
                             for j in range(0, 15):
                                 if period[j] == str(have_course['period'+m])[0:2]:
                                         s = j
-                                elif period[j] == str(have_course['period'+m])[3:5]:
+                                if period[j] == str(have_course['period'+m])[3:5]:
                                         e = j
                             for k in range(0, e-s+1):
                                 timelist[i][s+k] = 1
