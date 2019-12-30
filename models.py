@@ -13,3 +13,7 @@ def get_user(uid):
         return res.fetchone()
     else:
         return None
+
+def set_user_select_course(uid, sc):
+    res = db.session.execute(text('UPDATE user SET select_course=:sel'), {'sel': sc})
+    db.session.commit()
