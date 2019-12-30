@@ -431,7 +431,7 @@ class FJU_course_list(Resource):
         if sql_where == '':
             sql_where = '1'
         sql = 'SELECT * FROM fju_course WHERE {}'.format(sql_where)
-        print(sql)
+        print('[*] SQL = {}'.format(sql_where))
         res = db.session.execute(text(sql), params)
         # Pack the results
         items = []
