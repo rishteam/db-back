@@ -211,7 +211,7 @@ class CurriculumList(Resource):
         else:
             abort(404, message='User {} not found'.format(stuID))
         # Get grade of a user and return years
-        rt = {'year': CurriculumList.get_year_list(r, stuID, passwd)}
+        rt = {'year': CurriculumList.get_year_list(stuID, passwd)}
         return rt, 200
 
 class CurriculumRes(Resource):
