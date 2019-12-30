@@ -43,7 +43,12 @@ class Course_delete(Resource):
         if res.rowcount == 0:
             return {"result": "You don't have this course in 108-1"}, 400
 
-        commentID = res.fetchone()['id']
+        row = res.fetchone()
+        if row['orig'] == 1:
+            return {"result": "Falied",
+                    "message": "You cannot delete origin course"}, 400
+        commentID = row['id']
+
 
         # 找到之後刪除
         db.session.execute(text('''
