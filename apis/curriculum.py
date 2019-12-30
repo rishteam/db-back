@@ -285,7 +285,8 @@ class CurriculumRes(Resource):
     def get(self, stuID, year):
         year = str(year)
         clist = CurriculumRes.crawl_curriculum_data(stuID, year)
-        clist[year] += CurriculumRes.get_picked_curriculum(stuID, year)
+        nlist = CurriculumRes.get_picked_curriculum(stuID, year)
+        clist[year] += nlist
         return clist, 200
 
 class CurriculumList(Resource):
