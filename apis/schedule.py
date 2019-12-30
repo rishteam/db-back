@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from db import db
 from utils import token_required, check_null
+import models
 
 import re
 import requests
@@ -61,7 +62,6 @@ class Course_delete(Resource):
         db.session.commit()
         return {"result": "Success",
                 "course_code" : course_code}, 200
-
 
 class Course_insert(Resource):
     @token_required
@@ -326,26 +326,26 @@ class Auto_course_insert(Resource):
                             succ = True
                     if succ:
                         candi.append({
-                                    'course_code': check_null(row['course_code']),
-                                    'name'       : check_null(row['name']),
-                                    'teacher'    : check_null(row['teacher']),
-                                    'department' : check_null(row['department']),
-                                    'score'      : check_null(row['score']),
-                                    'kind'       : check_null(row['kind']),
-                                    'times'      : check_null(row['times']),
-                                    'day'        : check_null(row['day']),
-                                    'week'       : check_null(row['week']),
-                                    'period'     : check_null(row['period']),
-                                    'classroom'  : check_null(row['classroom']),
-                                    'day2'       : check_null(row['day2']),
-                                    'week2'      : check_null(row['week2']),
-                                    'period2'    : check_null(row['period2']),
-                                    'classroom2' : check_null(row['classroom2']),
-                                    'day3'       : check_null(row['day3']),
-                                    'week3'      : check_null(row['week3']),
-                                    'period3'    : check_null(row['period3']),
-                                    'classroom3' : check_null(row['classroom3'])
-                                    })
+                            'course_code': check_null(row['course_code']),
+                            'name'       : check_null(row['name']),
+                            'teacher'    : check_null(row['teacher']),
+                            'department' : check_null(row['department']),
+                            'score'      : check_null(row['score']),
+                            'kind'       : check_null(row['kind']),
+                            'times'      : check_null(row['times']),
+                            'day'        : check_null(row['day']),
+                            'week'       : check_null(row['week']),
+                            'period'     : check_null(row['period']),
+                            'classroom'  : check_null(row['classroom']),
+                            'day2'       : check_null(row['day2']),
+                            'week2'      : check_null(row['week2']),
+                            'period2'    : check_null(row['period2']),
+                            'classroom2' : check_null(row['classroom2']),
+                            'day3'       : check_null(row['day3']),
+                            'week3'      : check_null(row['week3']),
+                            'period3'    : check_null(row['period3']),
+                            'classroom3' : check_null(row['classroom3'])
+                        })
                 data[day[i]].update({j :  candi})
 
 
