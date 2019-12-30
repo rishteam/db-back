@@ -332,6 +332,7 @@ class FJU_course_list(Resource):
     param_parser.add_argument('name', type=str)
     param_parser.add_argument('teacher', type=str)
     param_parser.add_argument('department', type=str)
+    param_parser.add_argument('kind', type=str)
     param_parser.add_argument('day', type=str)
     param_parser.add_argument('period', type=str)
     param_parser.add_argument('include', type=bool)
@@ -345,10 +346,12 @@ class FJU_course_list(Resource):
             'teacher',
             'department'
         ]
-        not_query = ['day', 'period', 'include']
+        not_query = ['day', 'period', 'include', 'kind']
+        select_no_query_opt = False
         condit += not_query # for checking
         selected_condit = []
         sql_where = ''
+
 
        # Check if it provides more than one param
         is_none_data = True
@@ -380,6 +383,7 @@ class FJU_course_list(Resource):
                     sql_where += "day='{0}' OR day2='{0}' OR day3='{0}'".format(weekday_num_to_eng(i))
                     first = False
             sql_where = '({})'.format(sql_where)
+            select_no_query_opt = True
         # Prepare time (D?-D?)
         # Notice: TIME_NONE means empty time and None means it didn't pass time option in
         if 'period' in selected_condit:
@@ -392,14 +396,33 @@ class FJU_course_list(Resource):
                 time = CoursePeriod(*time)
         else:
             time = None
-        print('>> {}'.format(time))
         #
         inc_flag = args['include']
+        # Category of a course
+        kind_opt = ['必', '選', '通', '輔']
+        kind_selected = []
+        kind = args['kind'] if 'kind' in args else None
+        if kind:
+            for c in kind:
+                if c in kind_opt:
+                    kind_selected.append(c)
+            ## make sql
+            if select_no_query_opt:
+                sql_where += ' AND '
+            sql_where += '('
+            for idx, opt in enumerate(kind_selected):
+                tmp = 'kind=\'{}\''.format(opt)
+                if idx != 0:
+                    sql_where += ' OR '
+                sql_where += tmp
+            sql_where += ')'
+            print(sql_where)
+            select_no_query_opt = True
         # Make SQL by the given condition
         selected_condit = [x for x in selected_condit if x not in not_query] # remove not_query from condit
         for idx, c in enumerate(selected_condit):
             if idx == 0:
-                if weekday:
+                if select_no_query_opt:
                     sql_where += ' AND '
                 sql_where += '{0} LIKE :{0}'.format(c)
             else:
