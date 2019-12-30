@@ -130,7 +130,7 @@ class Course_insert(Resource):
                                 timelist[i][s+k] = cnt
                 cnt += 1
         # DEBUG
-        debug(period, timelist)
+        # debug(period, timelist)
 
         # add course
         want_add = db.session.execute(text('''
@@ -151,7 +151,7 @@ class Course_insert(Resource):
         # the course which is in the curriculum and orig is true
         if res.rowcount > 0:
             row = res.fetchone()
-            print(row)
+            # print(row)
             if row['orig'] == 1:
                 return {"result": "Falied",
                         "message": "You cannot insert origin course"}, 400
@@ -163,15 +163,15 @@ class Course_insert(Resource):
                     if day[i] == row['day'+m]:
                         s = 0
                         e = 0
-                        print(row['period'])
+                        # print(row['period'])
                         for j in range(0, 15):
                             if period[j] == str(row['period'+m])[0:2]:
                                 s = j
                             if period[j] == str(row['period'+m])[3:5]:
                                 e = j
-                        print(s,e)
+                        # print(s,e)
                         for k in range(0, e-s+1):
-                                print(s+k)
+                                # print(s+k)
                                 if timelist[i][s+k] != 0:
                                     return {'result': False,
                                             'course_code': chose_course_code[timelist[i][s+k]]}, 400
@@ -213,13 +213,13 @@ class CoursePeriod:
             raise TypeError(
                 'The item should be CoursePeriod not {}'.format(type(item)))
         p2i = CoursePeriod.PERIOD2IDX
-        overlapp = 0
-        # i= self idx
-        for i in range(p2i[self.start], p2i[self.end]+1):
-            if p2i[item.start] <= i and i <= p2i[item.end]:
-                overlapp += 1
-        return overlapp > 0
+        return p2i[self.start] <= p2i[item.start] and p2i[item.end] <= p2i[self.end]
 
+    def __repr__(self):
+        return '<CoursePeriod start={} end={}>'.format(self.start, self.end)
+
+    def __str__(self):
+        return '{}-{}'.format(self.start, self.end)
 
 class Auto_course_insert(Resource):
     @staticmethod
@@ -271,12 +271,13 @@ class Auto_course_insert(Resource):
 
         return space_time
 
-    @token_required
-    def get(self, stuID):
+    # @token_required
+    def get(self, stuID, weekday, timeperiod):
         idx = ['', '2', '3']
         period = ['D0', 'D1', 'D2', 'D3', 'D4', 'DN', 'D5',
                     'D6', 'D7', 'D8', 'E0', 'E1', 'E2', 'E3', 'E4']
         day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        day_num2eng = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         timelist = [[0]*15 for i in range(7)]
 
         res = db.session.execute(
@@ -300,8 +301,7 @@ class Auto_course_insert(Resource):
         ALL_PERIOD = ['D0', 'D1', 'D2', 'D3', 'D4', 'DN', 'D5', 'D6', 'D7', 'D8', 'E0', 'E1', 'E2', 'E3', 'E4']
         PERIOD2IDX = {'D0' : 0, 'D1' : 1, 'D2' : 2, 'D3' : 3, 'D4' : 4, 'DN' : 5, 'D5' : 6, 'D6' : 7, 'D7' : 8, 'D8' : 9, 'E0' : 10, 'E1' : 11, 'E2' : 12, 'E3' : 13, 'E4' : 14}
 
-
-        print(space_time)
+        # print(space_time)
         # Remove in the funture because use api to call api
         for i in range(0, 7):
             for j in space_time[i]:
@@ -312,6 +312,7 @@ class Auto_course_insert(Resource):
                 # print(res.rowcount)
                 time = j.split('-')
                 time = CoursePeriod(*time)
+                # print(time)
 
                 candi = []
                 for row in res:
@@ -320,10 +321,11 @@ class Auto_course_insert(Resource):
                     p2 = make_CoursePeriod(row['period2']) if row['period2'] else None
                     p3 = make_CoursePeriod(row['period3']) if row['period3'] else None
                     plist = [p1, p2, p3]
-                    succ = False
+                    succ = True
                     for p in plist:
-                        if p and p in time:
-                            succ = True
+                        if p and p not in time:
+                            # print(p)
+                            succ = False
                     if succ:
                         candi.append({
                             'course_code': check_null(row['course_code']),
@@ -347,6 +349,21 @@ class Auto_course_insert(Resource):
                             'classroom3' : check_null(row['classroom3'])
                         })
                 data[day[i]].update({j :  candi})
-
-
-        return data, 200
+                # end for row
+            # end for j
+        #end for i
+        weekday = day_num2eng[weekday]
+        tlist = []
+        for i in data[weekday]:
+            print(i)
+            tlist.append(CoursePeriod(*(i.split('-'))))
+        print(tlist)
+        cur_time =  CoursePeriod(timeperiod, timeperiod)
+        res_list = None
+        for t in tlist:
+            if cur_time in t:
+                k = str(t)
+                print(k)
+                res_list = data[weekday][k]
+                break
+        return res_list, 200
