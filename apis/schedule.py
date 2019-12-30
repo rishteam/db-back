@@ -142,10 +142,19 @@ class Course_insert(Resource):
         if want_add.rowcount == 0:
             raise RuntimeError('Course_code {} is not exist'.format(course_code))
 
-        row = want_add.fetchone()
-        if row['orig'] == 1:
-            return {"result": "Falied",
-                    "message": "You cannot insert origin course"}, 400
+        res = db.session.execute(text('''
+        SELECT * FROM curriculum WHERE course_code=:course_code
+        '''), {
+            'course_code': course_code
+        })
+
+        # the course which is in the curriculum and orig is true
+        if res.rowcount > 0:
+            row = res.fetchone()
+            print(row)
+            if row['orig'] == 1:
+                return {"result": "Falied",
+                        "message": "You cannot insert origin course"}, 400
 
         # add course
         for row in want_add:
