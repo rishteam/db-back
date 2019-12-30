@@ -44,7 +44,12 @@ class Course_delete(Resource):
         if res.rowcount == 0:
             return {"result": "You don't have this course in 108-1"}, 400
 
-        commentID = res.fetchone()['id']
+        row = res.fetchone()
+        if row['orig'] == 1:
+            return {"result": "Falied",
+                    "message": "You cannot delete origin course"}, 400
+        commentID = row['id']
+
 
         # 找到之後刪除
         db.session.execute(text('''
@@ -136,6 +141,20 @@ class Course_insert(Resource):
 
         if want_add.rowcount == 0:
             raise RuntimeError('Course_code {} is not exist'.format(course_code))
+
+        res = db.session.execute(text('''
+        SELECT * FROM curriculum WHERE course_code=:course_code
+        '''), {
+            'course_code': course_code
+        })
+
+        # the course which is in the curriculum and orig is true
+        if res.rowcount > 0:
+            row = res.fetchone()
+            print(row)
+            if row['orig'] == 1:
+                return {"result": "Falied",
+                        "message": "You cannot insert origin course"}, 400
 
         # add course
         for row in want_add:
